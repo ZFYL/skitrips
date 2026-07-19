@@ -1,9 +1,13 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { HeroSectionProps } from '@/types';
+
+// Maps a full-size /images/* path to its pre-sized card variant in /images/cards/.
+function cardVariant(src: string): string {
+  return src.replace('/images/', '/images/cards/');
+}
 
 const HeroSection: React.FC<HeroSectionProps> = ({
   backgroundImage,
@@ -13,44 +17,60 @@ const HeroSection: React.FC<HeroSectionProps> = ({
 }) => {
   return (
     <section className={cn(
-      'relative w-full h-screen min-h-[600px] flex items-center justify-center overflow-hidden',
+      'relative w-full min-h-[92vh] flex items-center overflow-hidden',
+      'bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950',
       className
     )}>
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        <Image
-          src={backgroundImage}
-          alt="Hero background"
-          fill
-          className="object-cover object-center"
-          priority
-          quality={90}
-        />
-        {/* Overlay for better text readability */}
-        <div className="absolute inset-0 bg-black/20" />
-      </div>
+      {/* Ambient glows */}
+      <div aria-hidden className="absolute -top-40 -right-40 h-[36rem] w-[36rem] rounded-full bg-indigo-500/20 blur-3xl" />
+      <div aria-hidden className="absolute -bottom-48 -left-24 h-[30rem] w-[30rem] rounded-full bg-sky-400/10 blur-3xl" />
 
       {/* Content */}
-      {(title || subtitle) && (
-        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-          {title && (
-            <h1 className="text-hero text-white mb-6 drop-shadow-lg">
-              {title}
-            </h1>
-          )}
-          {subtitle && (
-            <p className="text-subtitle text-white/90 drop-shadow-md">
-              {subtitle}
-            </p>
+      <div className="container mx-auto px-4 relative z-10 pt-32 pb-20">
+        <div className={cn(
+          'grid items-center gap-12',
+          backgroundImage ? 'md:grid-cols-[1.15fr_0.85fr]' : ''
+        )}>
+          <div className={cn('text-center', backgroundImage && 'md:text-left')}>
+            {title && (
+              <h1 className="text-hero text-white mb-6 drop-shadow-lg">
+                {title}
+              </h1>
+            )}
+            {subtitle && (
+              <p className={cn(
+                'text-subtitle text-white/85 drop-shadow-md',
+                backgroundImage ? 'md:max-w-xl' : 'max-w-3xl mx-auto'
+              )}>
+                {subtitle}
+              </p>
+            )}
+          </div>
+
+          {backgroundImage && (
+            <div className="relative hidden md:block justify-self-center w-full max-w-sm">
+              {/* Plain <img>, not next/image: an absolutely-positioned fill
+                  image in this hero gets stuck as a blank first paint in
+                  Chrome. A normal in-flow img paints reliably; the asset is a
+                  pre-sized ~1024px card variant, so optimization adds nothing. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={cardVariant(backgroundImage)}
+                alt=""
+                width={585}
+                height={1024}
+                className="w-full aspect-[3/4] object-cover rounded-3xl shadow-2xl"
+              />
+            </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* Scroll indicator */}
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10">
         <div className="animate-bounce">
           <svg
-            className="w-6 h-6 text-white drop-shadow-lg"
+            className="w-6 h-6 text-white/80"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

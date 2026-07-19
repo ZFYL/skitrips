@@ -11,32 +11,20 @@ const TitleBlock: React.FC<TitleBlockProps> = ({
 }) => {
   return (
     <div className={cn(
-      'relative w-full py-20 text-center',
+      'relative w-full pt-20 pb-12 text-center',
       className
     )}>
-      {/* Background overlay with drop shadow effect */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/80 to-transparent backdrop-blur-sm" />
-      
-      {/* Content with text shadow */}
-      <div className="relative z-10 container mx-auto px-4">
-        <h2 
-          className="text-title text-black mb-4"
-          style={{ textShadow: 'var(--shadow-text)' }}
-        >
+      <div className="container mx-auto px-4">
+        <h2 className="text-title text-black mb-4">
           {title}
         </h2>
         {subtitle && (
-          <p 
-            className="text-subtitle text-gray-700"
-            style={{ textShadow: 'var(--shadow-text)' }}
-          >
+          <p className="text-subtitle text-gray-600 max-w-2xl mx-auto">
             {subtitle}
           </p>
         )}
+        <div className="mx-auto mt-8 w-16 h-1 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600" />
       </div>
-      
-      {/* Decorative line */}
-      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-24 h-px bg-black/20" />
     </div>
   );
 };

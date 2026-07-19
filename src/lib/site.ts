@@ -1,5 +1,5 @@
 // Central site configuration used by pages, metadata, and OG images.
-export const SITE_URL = "https://bonvo.ski";
+export const SITE_URL = "https://www.skitrips.eu";
 export const SITE_NAME = "Bonvo.Ski";
 export const CONTACT_EMAIL = "hello@bonvo.ski";
 

@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
 :root {
   /* Colors based on Figma design */
@@ -38,11 +37,10 @@
   --font-sans: var(--font-primary);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* NOTE: no universal margin/padding reset here — Tailwind's preflight already
+   provides it inside @layer base. An unlayered `* { margin: 0; padding: 0 }`
+   would out-cascade every layered Tailwind utility (p-*, m-*, space-*) and
+   collapse the whole layout. */
 
 html {
   scroll-behavior: smooth;

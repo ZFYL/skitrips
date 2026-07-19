@@ -8,16 +8,19 @@ import {
   StatStrip,
   ComparisonTable,
   ContactCTA,
+  TripCardGrid,
 } from '@/components';
+import type { TripCard } from '@/components/blocks/TripCardGrid';
 import { flagship, landingPrices, comparisonRows, comparisonFootnote } from '@/lib/packages';
 
-const tripCards = [
+const tripCards: TripCard[] = [
   {
     href: '/trips/val-thorens',
     badge: 'Flagship',
     title: 'Val Thorens Week',
     text: '7 nights at 2,300 m in Les 3 Vallées — the biggest connected ski area on Earth. Flights, hotel, transfers, pass, insurance.',
     price: `from $${flagship.priceFrom.toLocaleString()}`,
+    accent: 'sky',
   },
   {
     href: '/trips/alpine-retreat',
@@ -25,6 +28,7 @@ const tripCards = [
     title: 'Alpine Retreat',
     text: 'Same mountains, zero obligation to ski. Spa, mountain food, winter trails — and ski days on demand.',
     price: `from $${landingPrices.retreatFrom.toLocaleString()}`,
+    accent: 'violet',
   },
   {
     href: '/trips/family',
@@ -32,6 +36,7 @@ const tripCards = [
     title: 'Family Week',
     text: 'Family-priced passes, kids’ lessons in English, connecting rooms, dinner included. One booking for the whole crew.',
     price: `4 people from $${landingPrices.familyFrom.toLocaleString()}`,
+    accent: 'amber',
   },
   {
     href: '/trips/groups',
@@ -39,6 +44,7 @@ const tripCards = [
     title: 'Group Trip',
     text: 'Batch-bought group passes, a room block in one hotel, one coach from the airport. Zero group-chat chaos.',
     price: `from $${landingPrices.groupFrom.toLocaleString()}`,
+    accent: 'emerald',
   },
 ];
 
@@ -52,12 +58,13 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-clip">
       <Header navigation={navigationItems} />
 
-      {/* Hero — trips first */}
+      {/* Hero — trips first, cutout rider floating on the gradient */}
       <HeroSection
-        backgroundImage="/images/hero-snowboarder.jpg"
+        backgroundImage="/images/cards/hero-snowboarder-cutout.png"
+        cutout
         title="Ski the Alps. Spend less than in Colorado."
         subtitle="Hand-built ski weeks from the US to Europe — flights, hotel, transfers, ski pass, and insurance in one package."
         actions={
@@ -74,59 +81,34 @@ export default function Home() {
 
       <main>
         {/* Trip cards */}
-        <SuperBlock>
+        <SuperBlock className="relative">
+          <div aria-hidden className="glow-blob glow-sky left-1/2 top-10 h-72 w-[36rem] -translate-x-1/2" />
           <TitleBlock
             title="Pick your kind of week."
             subtitle="Four ways to do the Alps — all fully organized, all quoted personally."
           />
-          <div className="container mx-auto px-4 pb-16">
-            <div className="grid gap-8 md:grid-cols-2">
-              {tripCards.map((card) => (
-                <Link
-                  key={card.href}
-                  href={card.href}
-                  className="neo-card group flex flex-col p-9 transition-transform duration-200 hover:-translate-y-1"
-                >
-                  <span className="self-start rounded-full bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#6e6e73] shadow-[0_6px_16px_rgba(29,29,31,0.08)]">
-                    {card.badge}
-                  </span>
-                  <h3 className="mt-6 text-2xl font-bold tracking-tight text-[#1d1d1f] md:text-3xl">
-                    {card.title}
-                  </h3>
-                  <p className="mt-3 flex-1 text-[0.95rem] leading-relaxed text-[#6e6e73]">
-                    {card.text}
-                  </p>
-                  <p className="mt-8 flex items-center justify-between">
-                    <span className="text-gradient text-lg font-semibold tracking-tight">
-                      {card.price}
-                    </span>
-                    <span
-                      aria-hidden
-                      className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#1d1d1f] shadow-[0_8px_20px_rgba(29,29,31,0.12)] transition-transform duration-200 group-hover:translate-x-1"
-                    >
-                      →
-                    </span>
-                  </p>
-                </Link>
-              ))}
-            </div>
+          <div className="container relative z-10 mx-auto px-4 pb-16">
+            <TripCardGrid cards={tripCards} />
           </div>
         </SuperBlock>
 
-        {/* Comparison — Apple spec style */}
+        {/* Comparison — Apple spec style with aurora halo */}
         <SuperBlock>
           <TitleBlock
             title="The math, side by side."
             subtitle="A week out west versus a week in the biggest ski area on the planet."
           />
           <div className="container mx-auto px-4 pb-24">
-            <div className="neo-card mx-auto max-w-4xl px-6 py-14 md:px-14">
-              <ComparisonTable
-                usHeading="Typical US week"
-                europeHeading="Bonvo Alps week"
-                rows={comparisonRows}
-                footnote={comparisonFootnote}
-              />
+            <div className="relative mx-auto max-w-4xl">
+              <div aria-hidden className="aurora-halo" />
+              <div className="neo-card relative z-10 px-6 py-14 md:px-14">
+                <ComparisonTable
+                  usHeading="Typical US week"
+                  europeHeading="Bonvo Alps week"
+                  rows={comparisonRows}
+                  footnote={comparisonFootnote}
+                />
+              </div>
             </div>
           </div>
         </SuperBlock>
@@ -141,14 +123,16 @@ export default function Home() {
         />
 
         {/* The app */}
-        <SuperBlock>
+        <SuperBlock className="relative">
+          <div aria-hidden className="glow-blob glow-violet -left-24 top-40 h-96 w-96" />
+          <div aria-hidden className="glow-blob glow-mint -right-24 bottom-20 h-96 w-96" />
           <section id="app">
             <TitleBlock
               title="Built on our own 3D maps."
               subtitle="Bonvo started as a 3D mapping project for European resorts — that knowledge is in every trip."
             />
           </section>
-          <div className="container mx-auto px-4 pb-24">
+          <div className="container relative z-10 mx-auto px-4 pb-24">
             <div className="grid gap-8 md:grid-cols-2">
               <div className="neo-card overflow-hidden p-9">
                 <h3 className="text-2xl font-bold tracking-tight text-[#1d1d1f]">
@@ -166,7 +150,7 @@ export default function Home() {
                   width={585}
                   height={1024}
                   loading="lazy"
-                  className="mt-8 aspect-[4/3] w-full rounded-[1.5rem] object-cover object-top shadow-[0_20px_50px_rgba(29,29,31,0.18)]"
+                  className="mt-8 aspect-[4/3] w-full rounded-[1.5rem] object-cover object-top shadow-[0_20px_50px_rgba(29,29,31,0.15)]"
                 />
               </div>
               <div className="neo-card overflow-hidden p-9">
@@ -185,7 +169,7 @@ export default function Home() {
                   width={585}
                   height={1024}
                   loading="lazy"
-                  className="mt-8 aspect-[4/3] w-full rounded-[1.5rem] object-cover object-top shadow-[0_20px_50px_rgba(29,29,31,0.18)]"
+                  className="mt-8 aspect-[4/3] w-full rounded-[1.5rem] object-cover object-top shadow-[0_20px_50px_rgba(29,29,31,0.15)]"
                 />
               </div>
             </div>

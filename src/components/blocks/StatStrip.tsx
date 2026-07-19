@@ -11,15 +11,25 @@ interface StatStripProps {
   className?: string;
 }
 
+// Pale tint per tile — the color is the accent, not the shadow.
+const tints = [
+  'bg-gradient-to-br from-sky-50 to-indigo-50',
+  'bg-gradient-to-br from-violet-50 to-fuchsia-50',
+  'bg-gradient-to-br from-amber-50 to-rose-50',
+];
+
 const StatStrip: React.FC<StatStripProps> = ({ stats, className }) => {
   return (
     <div className={cn('w-full py-16', className)}>
       <div className="container mx-auto px-4">
         <div className="grid gap-8 sm:grid-cols-3">
-          {stats.map((stat) => (
+          {stats.map((stat, i) => (
             <div
               key={stat.label}
-              className="neo-card flex flex-col items-center justify-center px-8 py-12 text-center"
+              className={cn(
+                'flex flex-col items-center justify-center rounded-[2rem] border border-black/[0.04] px-8 py-12 text-center shadow-[0_14px_34px_-14px_rgba(29,29,31,0.08)]',
+                tints[i % tints.length]
+              )}
             >
               <p className="text-gradient text-4xl font-bold tracking-tight md:text-5xl">
                 {stat.value}

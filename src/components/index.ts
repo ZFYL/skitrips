@@ -14,3 +14,4 @@ export { default as ItineraryTimeline } from './blocks/ItineraryTimeline';
 export { default as FAQBlock } from './blocks/FAQBlock';
 export { default as ComparisonTable } from './blocks/ComparisonTable';
 export { default as PriceCard } from './blocks/PriceCard';
+export { default as TripCardGrid } from './blocks/TripCardGrid';

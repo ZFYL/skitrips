@@ -4,6 +4,8 @@ export interface HeroSectionProps {
   title?: string;
   subtitle?: string;
   actions?: React.ReactNode;
+  /** Render the image as a transparent cutout floating on the hero, no card frame. */
+  cutout?: boolean;
   className?: string;
 }
 

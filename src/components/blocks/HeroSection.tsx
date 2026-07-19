@@ -6,7 +6,7 @@ import { HeroSectionProps } from '@/types';
 
 // Maps a full-size /images/* path to its pre-sized card variant in /images/cards/.
 function cardVariant(src: string): string {
-  return src.replace('/images/', '/images/cards/');
+  return src.startsWith('/images/cards/') ? src : src.replace('/images/', '/images/cards/');
 }
 
 const HeroSection: React.FC<HeroSectionProps> = ({
@@ -14,6 +14,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
   title,
   subtitle,
   actions,
+  cutout = false,
   className
 }) => {
   return (
@@ -21,12 +22,12 @@ const HeroSection: React.FC<HeroSectionProps> = ({
       <section className={cn(
         'relative mx-auto flex min-h-[82vh] w-full max-w-[1400px] items-center overflow-hidden rounded-[2.5rem]',
         'bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950',
-        'shadow-[0_40px_90px_rgba(29,29,31,0.35)]',
+        'shadow-[0_40px_90px_rgba(29,29,31,0.3)]',
         className
       )}>
-        {/* Ambient glows */}
-        <div aria-hidden className="absolute -top-40 -right-40 h-[36rem] w-[36rem] rounded-full bg-indigo-500/25 blur-3xl" />
-        <div aria-hidden className="absolute -bottom-48 -left-24 h-[30rem] w-[30rem] rounded-full bg-sky-400/15 blur-3xl" />
+        {/* Pale ambient glows */}
+        <div aria-hidden className="absolute -top-40 -right-40 h-[36rem] w-[36rem] rounded-full bg-sky-300/20 blur-3xl" />
+        <div aria-hidden className="absolute -bottom-48 -left-24 h-[30rem] w-[30rem] rounded-full bg-violet-300/15 blur-3xl" />
 
         {/* Content */}
         <div className="container relative z-10 mx-auto px-6 py-20 md:px-12">
@@ -60,18 +61,35 @@ const HeroSection: React.FC<HeroSectionProps> = ({
 
             {backgroundImage && (
               <div className="relative hidden w-full max-w-sm justify-self-center md:block">
-                {/* Plain <img>, not next/image: an absolutely-positioned fill
-                    image in this hero gets stuck as a blank first paint in
-                    Chrome. A normal in-flow img paints reliably; the asset is a
-                    pre-sized ~1024px card variant, so optimization adds nothing. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={cardVariant(backgroundImage)}
-                  alt=""
-                  width={585}
-                  height={1024}
-                  className="aspect-[3/4] w-full rounded-[2rem] object-cover shadow-[0_30px_70px_rgba(0,0,0,0.5)]"
-                />
+                {cutout ? (
+                  <>
+                    {/* Pale glow the rider floats on */}
+                    <div aria-hidden className="glow-blob glow-sky -left-16 top-8 h-80 w-80" />
+                    <div aria-hidden className="glow-blob glow-pink -right-10 bottom-0 h-72 w-72" />
+                    {/* Plain <img> (see note below); transparent cutout, no frame */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={backgroundImage}
+                      alt=""
+                      width={444}
+                      height={735}
+                      className="relative z-10 mx-auto w-[85%] drop-shadow-[0_35px_45px_rgba(0,0,0,0.55)]"
+                    />
+                  </>
+                ) : (
+                  /* Plain <img>, not next/image: an absolutely-positioned fill
+                     image in this hero gets stuck as a blank first paint in
+                     Chrome. A normal in-flow img paints reliably; the asset is a
+                     pre-sized ~1024px card variant, so optimization adds nothing. */
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={cardVariant(backgroundImage)}
+                    alt=""
+                    width={585}
+                    height={1024}
+                    className="aspect-[3/4] w-full rounded-[2rem] object-cover shadow-[0_30px_70px_rgba(0,0,0,0.5)]"
+                  />
+                )}
               </div>
             )}
           </div>

@@ -9,7 +9,9 @@ import {
   StatStrip,
   ComparisonTable,
   ContactCTA,
+  TripCardGrid,
 } from '@/components';
+import type { TripCard } from '@/components/blocks/TripCardGrid';
 import { tripsNav, SITE_URL } from '@/lib/site';
 import { flagship, landingPrices, comparisonRows, comparisonFootnote } from '@/lib/packages';
 
@@ -26,13 +28,14 @@ export const metadata: Metadata = {
   },
 };
 
-const tripCards = [
+const tripCards: TripCard[] = [
   {
     href: '/trips/val-thorens',
     badge: 'Flagship',
     title: 'Val Thorens Week',
     text: `${flagship.nights} nights in the highest resort of Les 3 Vallées — the biggest connected ski area on Earth. Flights, 4-star half-board option, private transfers, 6-day pass, full insurance.`,
     price: `from $${flagship.priceFrom.toLocaleString()}`,
+    accent: 'sky',
   },
   {
     href: '/trips/alpine-retreat',
@@ -40,6 +43,7 @@ const tripCards = [
     title: 'Alpine Retreat',
     text: 'Same mountains, no ski pass required. Come for the air, the food, the spa, and the views — ski a day or two if the mood strikes.',
     price: `from $${landingPrices.retreatFrom.toLocaleString()}`,
+    accent: 'violet',
   },
   {
     href: '/trips/family',
@@ -47,6 +51,7 @@ const tripCards = [
     title: 'Family Week',
     text: 'One booking, the whole crew sorted — family ski-pass pricing, kids’ lessons in English, connecting rooms, and a family-plan discount.',
     price: `4 people from $${landingPrices.familyFrom.toLocaleString()}`,
+    accent: 'amber',
   },
   {
     href: '/trips/groups',
@@ -54,6 +59,7 @@ const tripCards = [
     title: 'Group Trip',
     text: 'Friends, ski clubs, and companies. We batch-buy ski passes at group rates and take over a floor of the hotel, not a corner of it.',
     price: `from $${landingPrices.groupFrom.toLocaleString()}`,
+    accent: 'emerald',
   },
 ];
 
@@ -105,13 +111,16 @@ export default function TripsPage() {
 
         <SuperBlock>
           <div className="container mx-auto px-4 pb-16 pt-8">
-            <div className="neo-card mx-auto max-w-4xl px-6 py-14 md:px-14">
-              <ComparisonTable
-                usHeading="Typical US week"
-                europeHeading="Bonvo Alps week"
-                rows={comparisonRows}
-                footnote={comparisonFootnote}
-              />
+            <div className="relative mx-auto max-w-4xl">
+              <div aria-hidden className="aurora-halo" />
+              <div className="neo-card relative z-10 px-6 py-14 md:px-14">
+                <ComparisonTable
+                  usHeading="Typical US week"
+                  europeHeading="Bonvo Alps week"
+                  rows={comparisonRows}
+                  footnote={comparisonFootnote}
+                />
+              </div>
             </div>
           </div>
         </SuperBlock>
@@ -130,36 +139,7 @@ export default function TripsPage() {
             subtitle="Four ways to do the Alps — all fully organized, all quoted personally."
           />
           <div className="container mx-auto px-4 pb-16">
-            <div className="grid gap-8 md:grid-cols-2">
-              {tripCards.map((card) => (
-                <Link
-                  key={card.href}
-                  href={card.href}
-                  className="neo-card group flex flex-col p-9 transition-transform duration-200 hover:-translate-y-1"
-                >
-                  <span className="self-start rounded-full bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#6e6e73] shadow-[0_6px_16px_rgba(29,29,31,0.08)]">
-                    {card.badge}
-                  </span>
-                  <h3 className="mt-6 text-2xl font-bold tracking-tight text-[#1d1d1f] md:text-3xl">
-                    {card.title}
-                  </h3>
-                  <p className="mt-3 flex-1 text-[0.95rem] leading-relaxed text-[#6e6e73]">
-                    {card.text}
-                  </p>
-                  <p className="mt-8 flex items-center justify-between">
-                    <span className="text-gradient text-lg font-semibold tracking-tight">
-                      {card.price}
-                    </span>
-                    <span
-                      aria-hidden
-                      className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#1d1d1f] shadow-[0_8px_20px_rgba(29,29,31,0.12)] transition-transform duration-200 group-hover:translate-x-1"
-                    >
-                      →
-                    </span>
-                  </p>
-                </Link>
-              ))}
-            </div>
+            <TripCardGrid cards={tripCards} />
           </div>
         </SuperBlock>
 

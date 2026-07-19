@@ -15,6 +15,9 @@ interface ComparisonTableProps {
   className?: string;
 }
 
+// Apple-style spec comparison: two columns of big, short values with the
+// spec label centered between rows. Keep row values SHORT — details belong
+// in the footnote or surrounding prose, not in the cells.
 const ComparisonTable: React.FC<ComparisonTableProps> = ({
   usHeading,
   europeHeading,
@@ -23,32 +26,36 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({
   className,
 }) => {
   return (
-    <div className={cn('overflow-x-auto', className)}>
-      <table className="w-full min-w-[560px] border-collapse text-left">
-        <thead>
-          <tr className="border-b-2 border-black">
-            <th className="py-4 pr-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Per person, 6 ski days
-            </th>
-            <th className="py-4 px-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              {usHeading}
-            </th>
-            <th className="py-4 pl-4 text-sm font-semibold uppercase tracking-wide text-black">
-              {europeHeading}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.label} className="border-b border-gray-200">
-              <td className="py-4 pr-4 font-medium text-black">{row.label}</td>
-              <td className="py-4 px-4 text-gray-700">{row.us}</td>
-              <td className="py-4 pl-4 font-semibold text-black">{row.europe}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {footnote && <p className="mt-4 text-xs text-gray-500">{footnote}</p>}
+    <div className={cn('mx-auto max-w-3xl', className)}>
+      {/* Column headers */}
+      <div className="grid grid-cols-2 gap-6">
+        <p className="text-center text-sm font-semibold uppercase tracking-wide text-[#6e6e73]">
+          {usHeading}
+        </p>
+        <p className="text-gradient text-center text-sm font-semibold uppercase tracking-wide">
+          {europeHeading}
+        </p>
+      </div>
+
+      {rows.map((row) => (
+        <div key={row.label} className="mt-10 first-of-type:mt-8">
+          <p className="text-center text-xs font-medium uppercase tracking-widest text-[#a1a1a6]">
+            {row.label}
+          </p>
+          <div className="mt-3 grid grid-cols-2 items-center gap-6">
+            <p className="text-center text-xl font-medium tracking-tight text-[#6e6e73] md:text-2xl">
+              {row.us}
+            </p>
+            <p className="text-center text-xl font-semibold tracking-tight text-[#1d1d1f] md:text-2xl">
+              {row.europe}
+            </p>
+          </div>
+        </div>
+      ))}
+
+      {footnote && (
+        <p className="mt-12 text-center text-xs leading-relaxed text-[#a1a1a6]">{footnote}</p>
+      )}
     </div>
   );
 };

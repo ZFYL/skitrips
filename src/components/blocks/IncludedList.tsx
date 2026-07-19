@@ -13,21 +13,18 @@ interface IncludedListProps {
 
 const IncludedList: React.FC<IncludedListProps> = ({ items, className }) => {
   return (
-    <div className={cn('grid gap-6 md:grid-cols-2', className)}>
+    <div className={cn('grid gap-8 md:grid-cols-2', className)}>
       {items.map((item) => (
-        <div
-          key={item.title}
-          className="flex gap-4 rounded-lg border border-gray-200 bg-white p-6"
-        >
+        <div key={item.title} className="neo-card flex gap-5 p-8">
           <span
             aria-hidden
-            className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-black text-white text-sm"
+            className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 text-base text-white shadow-[0_8px_20px_rgba(99,102,241,0.35)]"
           >
             ✓
           </span>
           <div>
-            <h3 className="font-bold text-black">{item.title}</h3>
-            <p className="mt-1 text-sm text-gray-700">{item.detail}</p>
+            <h3 className="text-lg font-semibold tracking-tight text-[#1d1d1f]">{item.title}</h3>
+            <p className="mt-2 text-[0.95rem] leading-relaxed text-[#6e6e73]">{item.detail}</p>
           </div>
         </div>
       ))}

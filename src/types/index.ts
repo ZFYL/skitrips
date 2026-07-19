@@ -1,8 +1,9 @@
 // Component Props Types
 export interface HeroSectionProps {
-  backgroundImage: string;
+  backgroundImage?: string;
   title?: string;
   subtitle?: string;
+  actions?: React.ReactNode;
   className?: string;
 }
 

@@ -12,26 +12,26 @@ const footerLinks = [
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-black text-white">
-      <div className="container mx-auto px-4 py-16">
-        <div className="grid gap-10 md:grid-cols-3">
+    <footer className="px-4 pb-8 pt-4">
+      <div className="neo-card mx-auto max-w-[1200px] px-8 py-14 md:px-14">
+        <div className="grid gap-12 md:grid-cols-3">
           <div>
-            <p className="text-xl font-bold uppercase tracking-wide">Bonvo.Ski</p>
-            <p className="mt-2 text-sm text-white/70">
+            <p className="text-lg font-bold tracking-tight text-[#1d1d1f]">BONVO.SKI</p>
+            <p className="mt-3 text-sm leading-relaxed text-[#6e6e73]">
               Maps for skiers and riders — and hand-built ski trips from the US
               to the European Alps.
             </p>
           </div>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-white/60 mb-4">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#a1a1a6]">
               Trips
             </p>
-            <ul className="space-y-2">
+            <ul className="space-y-2.5">
               {footerLinks.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-white/80 hover:text-white transition-colors"
+                    className="text-sm text-[#494949] transition-colors hover:text-[#1d1d1f]"
                   >
                     {link.label}
                   </Link>
@@ -40,22 +40,22 @@ const Footer: React.FC = () => {
             </ul>
           </div>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-white/60 mb-4">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#a1a1a6]">
               Talk to us
             </p>
-            <p className="text-sm text-white/80">
+            <p className="text-sm leading-relaxed text-[#6e6e73]">
               Every trip starts with a conversation. Tell us your dates, your
               crew, and how you like to ride.
             </p>
             <a
               href={`mailto:${CONTACT_EMAIL}`}
-              className="mt-3 inline-block text-sm font-medium text-white underline underline-offset-4 hover:text-white/80"
+              className="mt-4 inline-block rounded-full bg-white px-5 py-2.5 text-sm font-medium text-[#1d1d1f] shadow-[0_8px_20px_rgba(29,29,31,0.1)] transition-transform hover:-translate-y-0.5"
             >
               {CONTACT_EMAIL}
             </a>
           </div>
         </div>
-        <div className="mt-12 border-t border-white/10 pt-6 text-xs text-white/50">
+        <div className="mt-12 border-t border-black/5 pt-6 text-xs text-[#a1a1a6]">
           <p>
             © {new Date().getFullYear()} Bonvo.Ski. Prices shown are indicative
             packages; every trip is quoted individually before you commit.

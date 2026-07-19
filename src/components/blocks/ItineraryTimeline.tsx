@@ -14,18 +14,14 @@ interface ItineraryTimelineProps {
 
 const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({ days, className }) => {
   return (
-    <ol className={cn('relative space-y-8 border-l border-gray-300 pl-8', className)}>
+    <ol className={cn('space-y-6', className)}>
       {days.map((item) => (
-        <li key={item.day} className="relative">
-          <span
-            aria-hidden
-            className="absolute -left-[41px] flex h-5 w-5 items-center justify-center rounded-full bg-black ring-4 ring-white"
-          />
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <li key={item.day} className="neo-card-sm p-8">
+          <span className="inline-block rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-white shadow-[0_6px_16px_rgba(99,102,241,0.3)]">
             {item.day}
-          </p>
-          <h3 className="mt-1 text-lg font-bold text-black">{item.title}</h3>
-          <p className="mt-1 text-body text-gray-700">{item.detail}</p>
+          </span>
+          <h3 className="mt-4 text-xl font-semibold tracking-tight text-[#1d1d1f]">{item.title}</h3>
+          <p className="mt-2 text-[0.95rem] leading-relaxed text-[#6e6e73]">{item.detail}</p>
         </li>
       ))}
     </ol>

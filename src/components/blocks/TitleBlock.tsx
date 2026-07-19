@@ -10,20 +10,16 @@ const TitleBlock: React.FC<TitleBlockProps> = ({
   className
 }) => {
   return (
-    <div className={cn(
-      'relative w-full pt-20 pb-12 text-center',
-      className
-    )}>
+    <div className={cn('relative w-full pt-24 pb-14 text-center', className)}>
       <div className="container mx-auto px-4">
-        <h2 className="text-title text-black mb-4">
+        <h2 className="text-title mb-5 text-[#1d1d1f]">
           {title}
         </h2>
         {subtitle && (
-          <p className="text-subtitle text-gray-600 max-w-2xl mx-auto">
+          <p className="text-subtitle mx-auto max-w-2xl text-[#6e6e73]">
             {subtitle}
           </p>
         )}
-        <div className="mx-auto mt-8 w-16 h-1 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600" />
       </div>
     </div>
   );

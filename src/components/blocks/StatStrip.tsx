@@ -13,16 +13,18 @@ interface StatStripProps {
 
 const StatStrip: React.FC<StatStripProps> = ({ stats, className }) => {
   return (
-    <div className={cn('w-full py-12 bg-black text-white', className)}>
+    <div className={cn('w-full py-16', className)}>
       <div className="container mx-auto px-4">
-        <div
-          className="grid gap-8 text-center"
-          style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}
-        >
+        <div className="grid gap-8 sm:grid-cols-3">
           {stats.map((stat) => (
-            <div key={stat.label}>
-              <p className="text-3xl md:text-4xl font-bold">{stat.value}</p>
-              <p className="mt-2 text-xs md:text-sm uppercase tracking-wide text-white/70">
+            <div
+              key={stat.label}
+              className="neo-card flex flex-col items-center justify-center px-8 py-12 text-center"
+            >
+              <p className="text-gradient text-4xl font-bold tracking-tight md:text-5xl">
+                {stat.value}
+              </p>
+              <p className="mt-4 text-sm font-medium text-[#6e6e73]">
                 {stat.label}
               </p>
             </div>

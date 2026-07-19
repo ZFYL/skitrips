@@ -26,40 +26,48 @@ const PriceCard: React.FC<PriceCardProps> = ({
   return (
     <div
       className={cn(
-        'flex flex-col rounded-lg border p-8',
+        'flex flex-col rounded-[2rem] p-9',
         featured
-          ? 'border-black bg-black text-white shadow-xl'
-          : 'border-gray-200 bg-white text-black',
+          ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white shadow-[0_30px_70px_rgba(29,29,31,0.4)]'
+          : 'neo-card text-[#1d1d1f]',
         className
       )}
     >
       <p
         className={cn(
           'text-sm font-semibold uppercase tracking-wide',
-          featured ? 'text-white/70' : 'text-gray-500'
+          featured ? 'text-sky-300' : 'text-[#6e6e73]'
         )}
       >
         {name}
       </p>
-      <p className="mt-4 text-4xl font-bold">{price}</p>
-      <p className={cn('mt-1 text-sm', featured ? 'text-white/70' : 'text-gray-500')}>
+      <p className="mt-5 text-4xl font-bold tracking-tight md:text-5xl">{price}</p>
+      <p className={cn('mt-2 text-sm', featured ? 'text-white/60' : 'text-[#a1a1a6]')}>
         {priceNote}
       </p>
-      <ul className="mt-6 space-y-3 text-sm flex-1">
+      <ul className="mt-8 flex-1 space-y-4 text-[0.95rem]">
         {highlights.map((h) => (
-          <li key={h} className="flex gap-2">
-            <span aria-hidden>✓</span>
-            <span>{h}</span>
+          <li key={h} className="flex items-start gap-3">
+            <span
+              aria-hidden
+              className={cn(
+                'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px]',
+                featured
+                  ? 'bg-white/15 text-sky-300'
+                  : 'bg-gradient-to-br from-sky-500 to-indigo-500 text-white'
+              )}
+            >
+              ✓
+            </span>
+            <span className={featured ? 'text-white/85' : 'text-[#494949]'}>{h}</span>
           </li>
         ))}
       </ul>
       <a
         href={mailto(emailSubject)}
         className={cn(
-          'mt-8 rounded-lg px-6 py-3 text-center font-medium transition-colors',
-          featured
-            ? 'bg-white text-black hover:bg-gray-200'
-            : 'bg-black text-white hover:bg-gray-800'
+          'pill-button mt-9 text-center',
+          featured ? 'bg-white text-[#1d1d1f] hover:bg-gray-100' : 'pill-primary'
         )}
       >
         {buttonLabel}

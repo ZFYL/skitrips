@@ -1,263 +1,206 @@
-import Image from "next/image";
 import Link from "next/link";
 import {
   Header,
   Footer,
   HeroSection,
-  HorizontalContentBlock,
   TitleBlock,
-  SuperBlock
+  SuperBlock,
+  StatStrip,
+  ComparisonTable,
+  ContactCTA,
 } from '@/components';
+import { flagship, landingPrices, comparisonRows, comparisonFootnote } from '@/lib/packages';
+
+const tripCards = [
+  {
+    href: '/trips/val-thorens',
+    badge: 'Flagship',
+    title: 'Val Thorens Week',
+    text: '7 nights at 2,300 m in Les 3 Vallées — the biggest connected ski area on Earth. Flights, hotel, transfers, pass, insurance.',
+    price: `from $${flagship.priceFrom.toLocaleString()}`,
+  },
+  {
+    href: '/trips/alpine-retreat',
+    badge: 'No pass needed',
+    title: 'Alpine Retreat',
+    text: 'Same mountains, zero obligation to ski. Spa, mountain food, winter trails — and ski days on demand.',
+    price: `from $${landingPrices.retreatFrom.toLocaleString()}`,
+  },
+  {
+    href: '/trips/family',
+    badge: 'Family plan',
+    title: 'Family Week',
+    text: 'Family-priced passes, kids’ lessons in English, connecting rooms, dinner included. One booking for the whole crew.',
+    price: `4 people from $${landingPrices.familyFrom.toLocaleString()}`,
+  },
+  {
+    href: '/trips/groups',
+    badge: '8+ riders',
+    title: 'Group Trip',
+    text: 'Batch-bought group passes, a room block in one hotel, one coach from the airport. Zero group-chat chaos.',
+    price: `from $${landingPrices.groupFrom.toLocaleString()}`,
+  },
+];
 
 export default function Home() {
   const navigationItems = [
-    { label: '3D Navigation', href: '#navigation', isActive: false },
-    { label: 'Search', href: '#search', isActive: false },
-    { label: 'Find Places', href: '#places', isActive: false },
-    { label: 'For Snowboarders', href: '#snowboarders', isActive: false },
-    { label: 'Ski Trips to Europe', href: '/trips', isActive: false },
+    { label: 'Val Thorens', href: '/trips/val-thorens', isActive: false },
+    { label: 'Retreat', href: '/trips/alpine-retreat', isActive: false },
+    { label: 'Family', href: '/trips/family', isActive: false },
+    { label: 'Groups', href: '/trips/groups', isActive: false },
+    { label: 'The App', href: '#app', isActive: false },
   ];
 
   return (
     <div className="min-h-screen">
       <Header navigation={navigationItems} />
 
-      {/* Hero Section */}
+      {/* Hero — trips first */}
       <HeroSection
         backgroundImage="/images/hero-snowboarder.jpg"
-        title="BONVO.SKI"
-        subtitle="3d Ski resort maps and services"
+        title="Ski the Alps. Spend less than in Colorado."
+        subtitle="Hand-built ski weeks from the US to Europe — flights, hotel, transfers, ski pass, and insurance in one package."
+        actions={
+          <>
+            <Link href="/trips/val-thorens" className="pill-button pill-primary">
+              See the Val Thorens week
+            </Link>
+            <Link href="/trips" className="pill-button pill-ghost-light">
+              Why Europe wins
+            </Link>
+          </>
+        }
       />
 
-      {/* Main Content */}
       <main>
-        {/* 3D Navigation Section */}
-        <SuperBlock>
-          <section id="navigation">
-            <TitleBlock
-              title="3D Navigation"
-              subtitle="Navigate ski resorts like never before"
-            />
-          </section>
-
-          <HorizontalContentBlock
-            leftContent={
-              <div className="relative w-full max-w-sm aspect-square">
-                <Image
-                  src="/images/search-hero.jpg"
-                  alt="3D Navigation illustration"
-                  fill
-                  className="object-cover rounded-lg"
-                />
-              </div>
-            }
-            rightContent={
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-black mb-3">Map Styles</h3>
-                  <p className="text-body text-gray-700">
-                    Easy navigation on a map that makes the most sense for you!
-                    Spot the closest landmarks to know where you are.
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-black mb-3">Live Navigation</h3>
-                  <p className="text-body text-gray-700">
-                    Live navigation lets you know where you are, and where you&apos;re facing!
-                    It can also track your route so you can see where you&apos;re moving.
-                  </p>
-                </div>
-              </div>
-            }
-          />
-        </SuperBlock>
-
-        {/* Search Section */}
-        <SuperBlock>
-          <section id="search">
-            <TitleBlock
-              title="Search"
-              subtitle="Find exactly what you're looking for"
-            />
-          </section>
-
-          <HorizontalContentBlock
-            leftContent={
-              <div className="relative w-full max-w-sm aspect-square">
-                <Image
-                  src="/images/ski-lift.jpg"
-                  alt="Search illustration"
-                  fill
-                  className="object-cover rounded-lg"
-                />
-              </div>
-            }
-            rightContent={
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-black mb-3">Lifts</h3>
-                  <p className="text-body text-gray-700">
-                    Clear and easy search for the lifts! Understand where are the
-                    stations and where they lead.
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-black mb-3">Slopes</h3>
-                  <p className="text-body text-gray-700">
-                    Find the slope your friends ride and get there quickly!
-                  </p>
-                </div>
-              </div>
-            }
-          />
-        </SuperBlock>
-
-        {/* Find Places Section */}
-        <SuperBlock>
-          <section id="places">
-            <TitleBlock
-              title="Find Places"
-              subtitle="Discover the best spots on the mountain"
-            />
-          </section>
-
-          <HorizontalContentBlock
-            leftContent={
-              <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-                <div className="relative aspect-square">
-                  <div className="w-full h-full bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold">🍽️</span>
-                  </div>
-                </div>
-                <div className="relative aspect-square">
-                  <div className="w-full h-full bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold">🚻</span>
-                  </div>
-                </div>
-                <div className="relative aspect-square">
-                  <div className="w-full h-full bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold">🎉</span>
-                  </div>
-                </div>
-                <div className="relative aspect-square">
-                  <div className="w-full h-full bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold">🎿</span>
-                  </div>
-                </div>
-              </div>
-            }
-            rightContent={
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-black mb-3">Restaurants</h3>
-                  <p className="text-body text-gray-700">
-                    Spot the closest restaurants, hüttes and cafés for a mid-day break!
-                    You will find high quality photos and great description of what to expect.
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-black mb-3">Events</h3>
-                  <p className="text-body text-gray-700">
-                    Find the best places to hang out during the day! Want to party?
-                    Join the best parties and register easily.
-                  </p>
-                </div>
-              </div>
-            }
-          />
-        </SuperBlock>
-
-        {/* For Snowboarders Section */}
+        {/* Trip cards */}
         <SuperBlock>
           <TitleBlock
-            title="For Snowboarders"
-            subtitle="Specialized features for snowboard enthusiasts"
+            title="Pick your kind of week."
+            subtitle="Four ways to do the Alps — all fully organized, all quoted personally."
           />
-
-          <HorizontalContentBlock
-            leftContent={
-              <div className="relative w-full max-w-sm aspect-square">
-                <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-6xl">🏂</span>
-                </div>
-              </div>
-            }
-            rightContent={
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-black mb-3">Slope Recommendations</h3>
-                  <p className="text-body text-gray-700">
-                    Is slope recommended for snowboarders? First time rider? No more accidents
-                    on red slopes or black diamonds. Choose the slope that fits your skillset
-                    and is approved by Bonvo!
+          <div className="container mx-auto px-4 pb-16">
+            <div className="grid gap-8 md:grid-cols-2">
+              {tripCards.map((card) => (
+                <Link
+                  key={card.href}
+                  href={card.href}
+                  className="neo-card group flex flex-col p-9 transition-transform duration-200 hover:-translate-y-1"
+                >
+                  <span className="self-start rounded-full bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#6e6e73] shadow-[0_6px_16px_rgba(29,29,31,0.08)]">
+                    {card.badge}
+                  </span>
+                  <h3 className="mt-6 text-2xl font-bold tracking-tight text-[#1d1d1f] md:text-3xl">
+                    {card.title}
+                  </h3>
+                  <p className="mt-3 flex-1 text-[0.95rem] leading-relaxed text-[#6e6e73]">
+                    {card.text}
                   </p>
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-black mb-3">Elevation Diagrams</h3>
-                  <p className="text-body text-gray-700">
-                    Understand the slope you want to go! Never get to a ski slope that is flat
-                    or has uphill parts. Choose the right slope to keep snowboarding comfortable and cool.
+                  <p className="mt-8 flex items-center justify-between">
+                    <span className="text-gradient text-lg font-semibold tracking-tight">
+                      {card.price}
+                    </span>
+                    <span
+                      aria-hidden
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#1d1d1f] shadow-[0_8px_20px_rgba(29,29,31,0.12)] transition-transform duration-200 group-hover:translate-x-1"
+                    >
+                      →
+                    </span>
                   </p>
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-black mb-3">Flat & Uphill Detection</h3>
-                  <p className="text-body text-gray-700">
-                    Find if the slope has a lot of flat parts if you&apos;re on a snowboard!
-                    Review slopes that are not suiting you, to keep you boarding the best slopes.
-                  </p>
-                </div>
-              </div>
-            }
-          />
+                </Link>
+              ))}
+            </div>
+          </div>
         </SuperBlock>
 
-        {/* Ski Trips to Europe */}
+        {/* Comparison — Apple spec style */}
         <SuperBlock>
-          <div className="relative w-full py-32 text-center bg-black text-white">
-            <div className="container mx-auto px-4">
-              <p className="text-sm font-semibold uppercase tracking-wide text-white/60 mb-4">
-                New from Bonvo
-              </p>
-              <h2 className="text-title mb-6">
-                We Don&apos;t Just Map the Alps. We Take You There.
-              </h2>
-              <p className="text-body-large text-white/80 mb-8 max-w-2xl mx-auto">
-                Hand-built ski weeks from the US to Europe — flights, hotel,
-                transfers, ski pass, and insurance in one package, often for
-                less than a comparable week in Colorado.
-              </p>
-              <Link
-                href="/trips"
-                className="inline-block bg-white text-black px-8 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-              >
-                Explore ski trips to Europe
-              </Link>
+          <TitleBlock
+            title="The math, side by side."
+            subtitle="A week out west versus a week in the biggest ski area on the planet."
+          />
+          <div className="container mx-auto px-4 pb-24">
+            <div className="neo-card mx-auto max-w-4xl px-6 py-14 md:px-14">
+              <ComparisonTable
+                usHeading="Typical US week"
+                europeHeading="Bonvo Alps week"
+                rows={comparisonRows}
+                footnote={comparisonFootnote}
+              />
+            </div>
+          </div>
+        </SuperBlock>
+
+        {/* Stats */}
+        <StatStrip
+          stats={[
+            { value: '600 km', label: 'of connected pistes in Les 3 Vallées' },
+            { value: '6 days', label: 'of skiing included in every package' },
+            { value: '1 email', label: 'to start planning your trip' },
+          ]}
+        />
+
+        {/* The app */}
+        <SuperBlock>
+          <section id="app">
+            <TitleBlock
+              title="Built on our own 3D maps."
+              subtitle="Bonvo started as a 3D mapping project for European resorts — that knowledge is in every trip."
+            />
+          </section>
+          <div className="container mx-auto px-4 pb-24">
+            <div className="grid gap-8 md:grid-cols-2">
+              <div className="neo-card overflow-hidden p-9">
+                <h3 className="text-2xl font-bold tracking-tight text-[#1d1d1f]">
+                  Navigate resorts in 3D
+                </h3>
+                <p className="mt-3 text-[0.95rem] leading-relaxed text-[#6e6e73]">
+                  Live navigation, lift and slope search, elevation profiles,
+                  and snowboarder-friendly flat-section warnings. Know the
+                  mountain before you land — and never miss the last lift home.
+                </p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/cards/search-hero.jpg"
+                  alt="Bonvo 3D map illustration — rider checking the resort map"
+                  width={585}
+                  height={1024}
+                  loading="lazy"
+                  className="mt-8 aspect-[4/3] w-full rounded-[1.5rem] object-cover object-top shadow-[0_20px_50px_rgba(29,29,31,0.18)]"
+                />
+              </div>
+              <div className="neo-card overflow-hidden p-9">
+                <h3 className="text-2xl font-bold tracking-tight text-[#1d1d1f]">
+                  Find the good places
+                </h3>
+                <p className="mt-3 text-[0.95rem] leading-relaxed text-[#6e6e73]">
+                  Mountain-hut restaurants, sun terraces, events, and the runs
+                  your level actually enjoys. Every Bonvo trip ships with our
+                  maps in your pocket — so you ski like you know the valley.
+                </p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/cards/ski-lift.jpg"
+                  alt="Bonvo app illustration — rider on a chairlift with the map open"
+                  width={585}
+                  height={1024}
+                  loading="lazy"
+                  className="mt-8 aspect-[4/3] w-full rounded-[1.5rem] object-cover object-top shadow-[0_20px_50px_rgba(29,29,31,0.18)]"
+                />
+              </div>
             </div>
           </div>
         </SuperBlock>
 
         {/* Final Call to Action */}
-        <SuperBlock>
-          <div className="relative w-full py-32 text-center bg-gradient-to-br from-blue-50 to-indigo-100">
-            <div className="container mx-auto px-4">
-              <h2 className="text-title text-black mb-6">
-                Ready to Navigate Ski Resorts in 3D?
-              </h2>
-              <p className="text-body-large text-gray-700 mb-8 max-w-2xl mx-auto">
-                Experience the future of ski resort navigation with Bonvo Ski.
-                Find your perfect slopes, discover amazing places, and make the most of your mountain adventure.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <button className="bg-black text-white px-8 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors">
-                  Get Started
-                </button>
-                <button className="border border-black text-black px-8 py-3 rounded-lg font-medium hover:bg-black hover:text-white transition-colors">
-                  Learn More
-                </button>
-              </div>
-            </div>
-          </div>
-        </SuperBlock>
+        <ContactCTA
+          title="Tell us about your winter."
+          text="Send us your rough dates and who's coming. Within one business day you'll have a complete, personally quoted trip plan — no obligation."
+          buttonLabel="Start planning my trip"
+          emailSubject="Ski trip to the Alps — trip inquiry"
+          secondaryLabel="Explore the flagship week"
+          secondaryHref="/trips/val-thorens"
+        />
       </main>
 
       <Footer />

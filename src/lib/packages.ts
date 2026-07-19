@@ -20,41 +20,21 @@ export const landingPrices = {
   groupFrom: 4190,
 };
 
-// US vs Bonvo comparison shown on /trips. US figures from published
-// 2025/26-season sources (SnowBrains, NSAA, Time Out/Casino.org, Park Record);
-// Bonvo figures are package components at our quoted rates.
+// US vs Bonvo comparison. Apple-spec style: values stay SHORT — the detail
+// lives in the footnote. US figures from published 2025/26-season sources
+// (SnowBrains, NSAA, Time Out/Casino.org, Park Record).
 export const comparisonRows = [
+  { label: 'Lift pass, 6 days', us: '$1,100 – $2,100', europe: '≈ $450' },
+  { label: 'Hotel, 7 nights', us: '$1,900 – $3,200', europe: 'Included' },
+  { label: 'Dinner every night', us: '$100+ / day', europe: 'Included' },
+  { label: 'Airport transfer', us: 'Rental car', europe: 'Included' },
+  { label: 'Ski & rescue insurance', us: 'Extra', europe: 'Included' },
   {
-    label: 'Lift tickets, 6 days',
-    us: '$1,100 – $2,100 (window rates $305–$356/day at Vail, Park City, Beaver Creek)',
-    europe: '≈ $450 — 6-day Les 3 Vallées pass, 600 km of pistes',
-  },
-  {
-    label: 'Lodging, 7 nights',
-    us: '$1,900 – $3,200 per person (peak-season 3–4★, room only)',
-    europe: 'Included — half-board hotel, dinner every night',
-  },
-  {
-    label: 'Airport transfer',
-    us: 'Rental car + mountain driving + parking fees',
-    europe: 'Included — a driver meets you at Geneva arrivals',
-  },
-  {
-    label: 'Ski & medical insurance',
-    us: 'Rarely bought, rescue billed separately',
-    europe: 'Included — winter-sports policy + on-piste rescue cover',
-  },
-  {
-    label: 'Food on the mountain',
-    us: '$100 – $150 per day resort pricing',
-    europe: 'Dinner included; mountain-hut lunch from ~$20',
-  },
-  {
-    label: 'All-in week, per person',
-    us: '≈ $5,500 – $9,400 (published estimates, flights included)',
-    europe: `From $${flagship.priceFrom.toLocaleString()} — transatlantic flights included`,
+    label: 'The week, all-in',
+    us: '$5,500 – $9,400',
+    europe: `From $${flagship.priceFrom.toLocaleString()}`,
   },
 ];
 
 export const comparisonFootnote =
-  'US figures: 2025/26-season published window rates and trip-cost studies (SnowBrains, NSAA, Time Out, Park Record). Bonvo figure: from-price for the Val Thorens Classic package, January & March departures, double occupancy. Every trip is quoted individually before you commit.';
+  'Per person, 6 ski days. US column: peak-season window rates and published trip-cost estimates for Vail/Park City-class resorts, flights included. Bonvo column: Val Thorens Classic package — transatlantic flights, half-board hotel, transfers, 6-day Les 3 Vallées pass, and insurance included; January & March departures, double occupancy. Every trip is quoted individually.';

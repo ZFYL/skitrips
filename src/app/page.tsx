@@ -60,8 +60,8 @@ export default function Home() {
                 <div>
                   <h3 className="text-2xl font-bold text-black mb-3">Live Navigation</h3>
                   <p className="text-body text-gray-700">
-                    Live navigation lets you know where you are, and where you're facing!
-                    It can also track your route so you can see where you're moving.
+                    Live navigation lets you know where you are, and where you&apos;re facing!
+                    It can also track your route so you can see where you&apos;re moving.
                   </p>
                 </div>
               </div>
@@ -199,7 +199,7 @@ export default function Home() {
                 <div>
                   <h3 className="text-2xl font-bold text-black mb-3">Flat & Uphill Detection</h3>
                   <p className="text-body text-gray-700">
-                    Find if the slope has a lot of flat parts if you're on a snowboard!
+                    Find if the slope has a lot of flat parts if you&apos;re on a snowboard!
                     Review slopes that are not suiting you, to keep you boarding the best slopes.
                   </p>
                 </div>

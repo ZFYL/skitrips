@@ -39,7 +39,7 @@ export interface NavigationItem {
 export interface ContentBlock {
   id: string;
   type: 'horizontal' | 'title' | 'super';
-  data: any;
+  data: unknown;
 }
 
 export interface HorizontalBlockData {

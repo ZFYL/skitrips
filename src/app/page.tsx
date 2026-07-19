@@ -1,6 +1,8 @@
 import Image from "next/image";
+import Link from "next/link";
 import {
   Header,
+  Footer,
   HeroSection,
   HorizontalContentBlock,
   TitleBlock,
@@ -13,6 +15,7 @@ export default function Home() {
     { label: 'Search', href: '#search', isActive: false },
     { label: 'Find Places', href: '#places', isActive: false },
     { label: 'For Snowboarders', href: '#snowboarders', isActive: false },
+    { label: 'Ski Trips to Europe', href: '/trips', isActive: false },
   ];
 
   return (
@@ -208,6 +211,31 @@ export default function Home() {
           />
         </SuperBlock>
 
+        {/* Ski Trips to Europe */}
+        <SuperBlock>
+          <div className="relative w-full py-32 text-center bg-black text-white">
+            <div className="container mx-auto px-4">
+              <p className="text-sm font-semibold uppercase tracking-wide text-white/60 mb-4">
+                New from Bonvo
+              </p>
+              <h2 className="text-title mb-6">
+                We Don&apos;t Just Map the Alps. We Take You There.
+              </h2>
+              <p className="text-body-large text-white/80 mb-8 max-w-2xl mx-auto">
+                Hand-built ski weeks from the US to Europe — flights, hotel,
+                transfers, ski pass, and insurance in one package, often for
+                less than a comparable week in Colorado.
+              </p>
+              <Link
+                href="/trips"
+                className="inline-block bg-white text-black px-8 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+              >
+                Explore ski trips to Europe
+              </Link>
+            </div>
+          </div>
+        </SuperBlock>
+
         {/* Final Call to Action */}
         <SuperBlock>
           <div className="relative w-full py-32 text-center bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -231,6 +259,8 @@ export default function Home() {
           </div>
         </SuperBlock>
       </main>
+
+      <Footer />
     </div>
   );
 }

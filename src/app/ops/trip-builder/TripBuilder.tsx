@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import {
   components,
@@ -10,6 +11,16 @@ import {
   type TripComponent,
 } from '@/lib/tripBuilderData';
 import type { LiveFlightOffer, LiveHotelOffer, LiveResponse } from '@/lib/live/types';
+
+// Leaflet touches `window` — client-only chunk.
+const HotelMap = dynamic(() => import('./HotelMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[420px] items-center justify-center rounded-2xl border border-black/10 bg-white text-sm text-[#a1a1a6]">
+      Loading map…
+    </div>
+  ),
+});
 
 /* ---------- pricing engine ---------- */
 
@@ -59,6 +70,16 @@ function optionQuantity(
       return { qty: people * nights, detail: `${people} pax × ${nights} nights` };
     case 'per_person_day':
       return { qty: people * skiDays, detail: `${people} pax × ${skiDays} days` };
+    case 'per_room_night': {
+      const occupancy = option.capacity ?? 2;
+      const rooms = Math.max(1, Math.ceil(people / occupancy));
+      return { qty: rooms * nights, detail: `${rooms} room${rooms > 1 ? 's' : ''} × ${nights} nights` };
+    }
+    case 'per_unit_week': {
+      const sleeps = option.capacity ?? 4;
+      const units = Math.max(1, Math.ceil(people / sleeps));
+      return { qty: units, detail: `${units} apartment${units > 1 ? 's' : ''} (sleeps ${sleeps})` };
+    }
     case 'per_vehicle_return': {
       const vehicles = Math.max(1, Math.ceil(people / (option.capacity ?? 8)));
       return { qty: vehicles, detail: `${vehicles} vehicle${vehicles > 1 ? 's' : ''} (cap. ${option.capacity ?? 8})` };
@@ -369,6 +390,25 @@ export default function TripBuilder() {
   const [offerTitle, setOfferTitle] = useState('Val Thorens Ski Week — Les 3 Vallées');
   const [includeInternal, setIncludeInternal] = useState(false);
 
+  const [showMap, setShowMap] = useState(true);
+  const [galleries, setGalleries] = useState<Record<string, string[]>>({});
+  const [galleryBusy, setGalleryBusy] = useState<Record<string, boolean>>({});
+
+  const pullPhotos = async (optionId: string, url: string) => {
+    setGalleryBusy((p) => ({ ...p, [optionId]: true }));
+    try {
+      const r = await fetch(`/api/live/hotel-photos?url=${encodeURIComponent(url)}`);
+      const json = await r.json();
+      if (Array.isArray(json.images)) {
+        setGalleries((p) => ({ ...p, [optionId]: json.images }));
+      }
+    } catch {
+      /* leave gallery empty */
+    } finally {
+      setGalleryBusy((p) => ({ ...p, [optionId]: false }));
+    }
+  };
+
   const [config, setConfig] = useState<Record<string, ComponentConfig>>(() =>
     Object.fromEntries(
       components.map((c) => [
@@ -462,6 +502,12 @@ export default function TripBuilder() {
               <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700">
                 Internal — Trip Builder
               </span>
+              <a
+                href="/ops/planner"
+                className="hidden rounded-full bg-black/5 px-4 py-1.5 text-xs font-semibold text-[#494949] transition-colors hover:bg-black/10 sm:inline-block"
+              >
+                Scenario planner →
+              </a>
             </div>
             <button
               onClick={() => window.print()}
@@ -510,82 +556,200 @@ export default function TripBuilder() {
                         {component.icon} {component.label}
                       </span>
                     </label>
-                    <span className="text-xs font-medium uppercase tracking-wide text-[#a1a1a6]">
-                      {component.unitHint}
+                    <span className="flex items-center gap-3">
+                      {component.id === 'hotel' && cfg.enabled && (
+                        <button
+                          type="button"
+                          onClick={() => setShowMap((v) => !v)}
+                          className="rounded-full bg-black/5 px-4 py-1.5 text-xs font-semibold text-[#494949] transition-colors hover:bg-black/10"
+                        >
+                          {showMap ? 'Hide map' : 'Show map'}
+                        </button>
+                      )}
+                      <span className="text-xs font-medium uppercase tracking-wide text-[#a1a1a6]">
+                        {component.unitHint}
+                      </span>
                     </span>
                   </div>
 
+                  {component.id === 'hotel' && cfg.enabled && showMap && (
+                    <div className="mt-4">
+                      <HotelMap
+                        hotels={component.options
+                          .filter((o) => o.lat != null && o.lon != null)
+                          .map((o) => ({
+                            id: o.id,
+                            name: o.name.replace(/ ★+S?$/u, '').slice(0, 26),
+                            lat: o.lat!,
+                            lon: o.lon!,
+                            priceLabel: `${o.currency === 'EUR' ? '€' : '$'}${o.price.toLocaleString()}`,
+                            selected: cfg.optionId === o.id,
+                          }))}
+                        onSelectHotel={(id) => patch('hotel', { optionId: id })}
+                        onPickOsmHotel={(pick) =>
+                          patch('hotel', {
+                            optionId: CUSTOM,
+                            customLabel: `${pick.name}${pick.website ? ` · ${pick.website}` : ''} (picked on map)`,
+                          })
+                        }
+                      />
+                    </div>
+                  )}
+
                   <div
                     className={cn(
-                      'mt-4 grid gap-4 md:grid-cols-2',
+                      'mt-4 grid gap-4',
                       !cfg.enabled && 'pointer-events-none opacity-40'
                     )}
                   >
                     {component.options.map((option) => {
                       const selected = cfg.optionId === option.id;
+                      const { qty, detail } = optionQuantity(option, people, nights, skiDays);
+                      const partyTotalUSD =
+                        option.price * qty * (option.currency === 'EUR' ? fx : 1);
                       return (
-                        <button
+                        <div
                           key={option.id}
-                          type="button"
+                          role="button"
+                          tabIndex={0}
                           onClick={() => patch(component.id, { optionId: option.id })}
+                          onKeyDown={(e) => e.key === 'Enter' && patch(component.id, { optionId: option.id })}
                           className={cn(
-                            'relative flex flex-col rounded-2xl border p-5 text-left transition-all',
+                            'flex cursor-pointer flex-col gap-4 rounded-2xl border bg-white p-4 text-left transition-all sm:flex-row',
                             selected
-                              ? 'border-indigo-400 bg-white shadow-[0_14px_34px_-10px_rgba(99,102,241,0.35)] ring-2 ring-indigo-400'
-                              : 'border-black/10 bg-white/70 hover:border-black/20 hover:bg-white'
+                              ? 'border-indigo-400 shadow-[0_14px_34px_-10px_rgba(99,102,241,0.35)] ring-2 ring-indigo-400'
+                              : 'border-black/10 hover:border-black/25 hover:shadow-[0_10px_28px_-12px_rgba(29,29,31,0.18)]'
                           )}
                         >
-                          {option.imageUrl && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={option.imageUrl}
-                              alt=""
-                              loading="lazy"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                              className="mb-4 h-36 w-full rounded-xl object-cover"
-                            />
-                          )}
-                          <span className="flex items-start justify-between gap-3">
-                            <span className="font-semibold">{option.name}</span>
-                            {option.tier && (
-                              <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-sky-700">
-                                {option.tier}
-                              </span>
+                          {/* Photo */}
+                          <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-xl sm:h-auto sm:w-56 sm:self-stretch">
+                            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-100 to-indigo-100 text-4xl">
+                              {component.icon}
+                            </div>
+                            {option.imageUrl && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={option.imageUrl}
+                                alt={option.name}
+                                loading="lazy"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                className="absolute inset-0 h-full w-full object-cover"
+                              />
                             )}
-                          </span>
-                          <span className="mt-1 text-sm leading-relaxed text-[#6e6e73]">
-                            {option.description}
-                          </span>
-                          <span className="mt-3 text-lg font-bold tracking-tight">
-                            {option.currency === 'EUR' ? '€' : '$'}
-                            {option.price.toLocaleString()}
-                            <span className="ml-1.5 text-xs font-medium text-[#a1a1a6]">
-                              {UNIT_LABEL[option.unit]}
-                              {option.vatRate > 0
-                                ? ` · incl. ${Math.round(option.vatRate * 100)}% VAT`
-                                : ' · no VAT'}
+                          </div>
+
+                          {/* Details */}
+                          <div className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span className="text-base font-semibold">{option.name}</span>
+                              {option.tier && (
+                                <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-sky-700">
+                                  {option.tier}
+                                </span>
+                              )}
                             </span>
-                          </span>
-                          {option.note && (
-                            <span className="mt-1.5 text-xs text-[#a1a1a6]">{option.note}</span>
-                          )}
-                          <span className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                            {option.url && (
-                              <a
-                                href={option.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-800"
-                              >
-                                Offer page ↗
-                              </a>
+                            <p className="mt-1 text-sm leading-relaxed text-[#6e6e73]">
+                              {option.description}
+                            </p>
+                            {option.note && (
+                              <p className="mt-1.5 text-xs text-[#a1a1a6]">{option.note}</p>
                             )}
-                            {option.contact && (
-                              <span className="text-[#6e6e73]">{option.contact}</span>
-                            )}
-                          </span>
-                        </button>
+                            <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                              {option.url && (
+                                <a
+                                  href={option.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-800"
+                                >
+                                  Offer page ↗
+                                </a>
+                              )}
+                              {option.contact && (
+                                <span className="text-[#6e6e73]">{option.contact}</span>
+                              )}
+                              {option.url && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    pullPhotos(option.id, option.url!);
+                                  }}
+                                  disabled={galleryBusy[option.id]}
+                                  className="rounded-full bg-black/5 px-3 py-1 font-semibold text-[#494949] transition-colors hover:bg-black/10 disabled:opacity-50"
+                                >
+                                  {galleryBusy[option.id] ? 'Pulling photos…' : '📷 Pull photos from site'}
+                                </button>
+                              )}
+                            </p>
+
+                            {(() => {
+                              const gallery = [
+                                ...(option.images ?? []),
+                                ...(galleries[option.id] ?? []),
+                              ].filter((u, i, a) => u !== option.imageUrl && a.indexOf(u) === i);
+                              if (gallery.length === 0) return null;
+                              return (
+                                <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                                  {gallery.slice(0, 10).map((src) => (
+                                    <a
+                                      key={src}
+                                      href={src}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="shrink-0"
+                                    >
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={src}
+                                        alt=""
+                                        loading="lazy"
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).parentElement!.style.display = 'none';
+                                        }}
+                                        className="h-16 w-24 rounded-lg object-cover shadow-sm transition-transform hover:scale-105"
+                                      />
+                                    </a>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                          {/* Price column */}
+                          <div className="flex shrink-0 flex-row items-end justify-between gap-1 border-t border-black/5 pt-3 sm:w-44 sm:flex-col sm:justify-center sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 sm:text-right">
+                            <div>
+                              <p className="text-lg font-bold tracking-tight">
+                                {option.currency === 'EUR' ? '€' : '$'}
+                                {option.price.toLocaleString()}
+                              </p>
+                              <p className="text-[11px] font-medium text-[#a1a1a6]">
+                                {UNIT_LABEL[option.unit]}
+                                {option.vatRate > 0
+                                  ? ` · incl. ${Math.round(option.vatRate * 100)}% VAT`
+                                  : ''}
+                              </p>
+                            </div>
+                            <div className="sm:mt-2">
+                              <p className="text-sm font-bold text-indigo-600">
+                                {fmtUSD(partyTotalUSD)} total
+                              </p>
+                              <p className="text-[11px] text-[#a1a1a6]">{detail}</p>
+                            </div>
+                            <span
+                              className={cn(
+                                'mt-1 hidden rounded-full px-4 py-1.5 text-xs font-semibold sm:inline-block',
+                                selected
+                                  ? 'bg-indigo-500 text-white'
+                                  : 'bg-black/5 text-[#6e6e73]'
+                              )}
+                            >
+                              {selected ? 'Selected ✓' : 'Select'}
+                            </span>
+                          </div>
+                        </div>
                       );
                     })}
 

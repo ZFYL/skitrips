@@ -8,6 +8,8 @@ export type Unit =
   | 'per_person'          // once per traveler
   | 'per_person_night'    // per traveler per hotel night
   | 'per_person_day'      // per traveler per ski day
+  | 'per_room_night'      // per room per night (capacity = occupancy, default 2)
+  | 'per_unit_week'       // per apartment/chalet per week (capacity = sleeps)
   | 'per_vehicle_return'  // per vehicle, round trip (uses capacity)
   | 'per_group';          // flat for the whole group
 
@@ -25,7 +27,10 @@ export interface SupplierOption {
   url?: string;
   contact?: string;
   imageUrl?: string;
-  capacity?: number;      // per_vehicle_return only
+  images?: string[];      // extra gallery images (room photos etc.)
+  capacity?: number;      // occupancy/sleeps/vehicle seats depending on unit
+  lat?: number;           // map position (hotels)
+  lon?: number;
   note?: string;
 }
 
@@ -43,6 +48,8 @@ export const UNIT_LABEL: Record<Unit, string> = {
   per_person: 'per person',
   per_person_night: 'per person / night',
   per_person_day: 'per person / ski day',
+  per_room_night: 'per room / night',
+  per_unit_week: 'per apartment / week',
   per_vehicle_return: 'per vehicle, return',
   per_group: 'flat, whole group',
 };
@@ -50,7 +57,7 @@ export const UNIT_LABEL: Record<Unit, string> = {
 export const components: TripComponent[] = [
   {
     id: 'flights',
-    label: 'Flights NYC ⇄ Geneva',
+    label: 'Flights US ⇄ Geneva',
     icon: '✈️',
     defaultEnabled: true,
     defaultOptionId: 'flight-onestop',
@@ -58,16 +65,40 @@ export const components: TripComponent[] = [
     options: [
       {
         id: 'flight-onestop',
-        name: '1-stop economy (SWISS / Air France)',
+        name: 'JFK 1-stop economy (SWISS / Air France)',
         tier: 'Budget',
         description:
-          'JFK/EWR → GVA via ZRH or CDG, ~10–12 h door to door. February is usually the cheapest month.',
+          'JFK → GVA via ZRH or CDG, ~10–12 h door to door. February is usually the cheapest month.',
         price: 550,
         currency: 'USD',
         unit: 'per_person',
         vatRate: 0,
         url: 'https://www.google.com/travel/flights/flights-from-new-york-to-geneva.html',
         note: 'Verified Jan–Mar range $430–$670 round trip; lows ~$420. International air is VAT-exempt.',
+      },
+      {
+        id: 'flight-ewr',
+        name: 'EWR 1-stop economy',
+        tier: 'Budget',
+        description: 'Newark → GVA connecting itineraries (e.g. via CPH); February cheapest.',
+        price: 650,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.kayak.com/flight-routes/Newark-EWR/Geneva-Geneve-Cointrin-GVA',
+        note: 'Winter band ~$500–$800 round trip; deals from ~$590.',
+      },
+      {
+        id: 'flight-bos',
+        name: 'BOS 1-stop economy',
+        tier: 'Budget',
+        description: 'Boston → GVA on Finnair / Air Canada connections.',
+        price: 600,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.momondo.com/flights/boston/geneva',
+        note: 'Winter band ~$540–$670 round trip; Jan average ~$536.',
       },
       {
         id: 'flight-nonstop',
@@ -86,7 +117,7 @@ export const components: TripComponent[] = [
   },
   {
     id: 'hotel',
-    label: 'Hotel — 7 nights',
+    label: 'Accommodation — 7 nights',
     icon: '🏨',
     defaultEnabled: true,
     defaultOptionId: 'hotel-sherpa',
@@ -94,20 +125,42 @@ export const components: TripComponent[] = [
     options: [
       {
         id: 'hotel-ucpa',
+        lat: 45.2984,
+        lon: 6.5698,
         name: 'UCPA Val Thorens (sports village)',
-        tier: 'Budget',
+        tier: 'Hostel',
         description:
-          'Non-profit all-inclusive sports hostel: 2–4 person rooms, full board, AND 6-day lift pass, equipment and group coaching bundled in one weekly price.',
-        price: 530,
+          'Non-profit all-inclusive sports residence: 2–4 person rooms, full board, AND 6-day lift pass, equipment and coaching bundled in one weekly price. Ages 18–55.',
+        price: 515,
         currency: 'EUR',
         unit: 'per_person',
         vatRate: 0.10,
-        url: 'https://www.ucpa.com/destinations/val-thorens',
-        contact: 'Booking via ucpa.com; UK agent action-outdoors.co.uk',
-        note: 'Verified band €380–€680 pp/WEEK all-in. If selected, disable ski pass + rental — they are included. Price shown is the mid band, per person for the whole week.',
+        url: 'https://www.ucpa.co.uk/resorts-in-france/snow/val-thorens/',
+        contact: 'Booking via ucpa.com / UK agent action-outdoors.co.uk',
+        imageUrl: 'https://www.ucpa.co.uk/media/3vjmscor/val-thorens-5-images1.jpg',
+        note: '2026/27 published £422–£462 pp/WEEK all-in (26 Dec–10 Apr). If selected, disable ski pass + rental — included.',
+      },
+      {
+        id: 'hotel-clubmed',
+        lat: 45.2991,
+        lon: 6.5785,
+        name: 'Club Med Val Thorens Sensations',
+        tier: 'Club',
+        description:
+          '4-Trident ski-in/ski-out all-inclusive: lift pass, group lessons, all meals, open bar and entertainment in one weekly price.',
+        price: 1700,
+        currency: 'EUR',
+        unit: 'per_person',
+        vatRate: 0.10,
+        url: 'https://www.clubmed.us/r/val-thorens-sensations/y',
+        contact: 'US +1 888 932 2582 · UK 03453 676767',
+        imageUrl: 'https://assets.dream.clubmed/pm_7531_414_414721-5ejk5pfxl4-swhr.jpg',
+        note: 'From-rate ≈ £1,850 pp/week incl. UK flights+transfers (Iglu); US quotes via engine. Pass + lessons included — disable those components.',
       },
       {
         id: 'hotel-sherpa',
+        lat: 45.2981,
+        lon: 6.5853,
         name: 'Hôtel Le Sherpa ★★★S',
         tier: 'Mid',
         description:
@@ -119,23 +172,51 @@ export const components: TripComponent[] = [
         url: 'https://www.lesherpa.com/en/',
         contact: 'courrier@lesherpa.com · +33 4 79 00 00 70',
         imageUrl: 'https://www.lesherpa.com/uploads/media/le-sherpa-val-thorens-photo-169668.png',
+        images: [
+          'https://www.lesherpa.com/uploads/media/le-sherpa-val-thorens-photo-169612.jpg',
+          'https://www.lesherpa.com/uploads/media/le-sherpa-val-thorens-photo-193976.jpg',
+        ],
         note: 'From ~€625 pp/week half board (low-season baseline; peak weeks materially higher — check live engine).',
       },
       {
         id: 'hotel-chaviere',
+        lat: 45.2966,
+        lon: 6.5831,
         name: 'Le Val Chavière ★★★',
         tier: 'Mid',
         description:
-          'Friendly 3-star in the resort center, ~5 min walk to the lifts, restaurant with half-board dinner. Backup if Le Sherpa allotment is gone.',
+          'Family-run 49-room ski-in/ski-out 3★ near the Pionniers chairlift — buffet breakfast, five-course half-board dinners.',
         price: 130,
         currency: 'EUR',
         unit: 'per_person_night',
         vatRate: 0.10,
-        url: 'https://www.hotelvalchaviere.com',
-        note: 'Estimate — request live group quote; double occupancy, half board.',
+        url: 'https://www.valthorens.com/en/hotel/hotel-val-chaviere/',
+        contact: 'Via Val Thorens Réservation +33 4 79 00 01 06',
+        imageUrl: 'https://static1.sno.co.uk/images/accom/v7/wlc/b38fac60-1a35-49e9-913e-269ca2a0ef79.jpg',
+        note: 'Operator ref: from £1,289 pp/week HB incl. UK flights (Jan 2027, 3 sharing). Estimate pp/night for direct allotment — request group quote.',
+      },
+      {
+        id: 'hotel-marielle',
+        lat: 45.2962,
+        lon: 6.5801,
+        name: 'Hôtel Marielle ★★★★',
+        tier: 'Premium',
+        description:
+          '4★ MMV hotel in the resort centre at the foot of the slopes with spa, indoor pool and half-board options.',
+        price: 245,
+        currency: 'EUR',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0.10,
+        url: 'https://www.hotelmarielle.com/en',
+        contact: 'reservation@hotelmarielle.com · +33 4 58 24 00 80',
+        imageUrl: 'https://cdn.prod.website-files.com/65ae7cf6afbedc03c5c995d9/65cba882a5a9ed81794bc91c_hotel-marielle%20(1).webp',
+        note: 'From ~$267/room/night third-party reference; date-driven engine on official site.',
       },
       {
         id: 'hotel-f7',
+        lat: 45.2953,
+        lon: 6.5839,
         name: 'Fahrenheit Seven ★★★★',
         tier: 'Premium',
         description:
@@ -146,7 +227,62 @@ export const components: TripComponent[] = [
         vatRate: 0.10,
         url: 'https://www.fahrenheitseven.com/en/destinations/hotel-val-thorens.html',
         contact: 'valtho@fahrenheitseven.com · +33 4 79 00 04 04',
-        note: 'Rooms ~€480–599/double/night in season → ≈€250–300 pp HB for 2 sharing. Taxe de séjour and child HB supplements at hotel.',
+        imageUrl: 'https://www.fahrenheitseven.com/images/val-thorens/chambres/chambre-double/farenheit-seven-hotel-val-thorens-chambre-2-personnes-19.jpg',
+        note: 'Rooms ~€480–599/double/night in season → ≈€250–300 pp HB for 2 sharing. Dynamic pricing — check engine.',
+      },
+      {
+        id: 'hotel-altapura',
+        lat: 45.2973,
+        lon: 6.5744,
+        name: 'Altapura Hôtel & Spa ★★★★★',
+        tier: 'Luxury',
+        description:
+          '88-room 5★ ski-in/ski-out with 1,000 m² spa, three restaurants and slope-side terrace at the foot of the Péclet glacier runs.',
+        price: 520,
+        currency: 'EUR',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0.10,
+        url: 'https://en.altapura.fr/',
+        contact: 'contact@altapura.fr · +33 4 30 05 03 40',
+        imageUrl: 'https://cdn.prod.website-files.com/5fac4fd4860ce86803c6289b/639e0217a7cb3c102002639f_2212-01_107_chambre_altapura_2500px_srgb_bd.jpg',
+        note: 'From ~€330/room/night low season (verified); peak winter substantially higher — €520 is a mid-winter planning figure.',
+      },
+      {
+        id: 'hotel-fitzroy',
+        lat: 45.2983,
+        lon: 6.5830,
+        name: 'Le Fitz Roy (Beaumier) ★★★★★',
+        tier: 'Luxury',
+        description:
+          'Beaumier-group 5★ hotel above Place Caron — the classic luxury address of Val Thorens.',
+        price: 900,
+        currency: 'USD',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0.10,
+        url: 'https://www.beaumier.com/en/properties/le-fitz-roy-hotel/',
+        contact: 'lefitzroy@beaumier.com',
+        imageUrl: 'https://www.beaumier.com/media/z4onfxml/l1030506.jpg',
+        note: 'Winter average ~$900/room/night; from ~$346 low season.',
+      },
+      {
+        id: 'hotel-montana',
+        lat: 45.2972,
+        lon: 6.5848,
+        name: 'Résidence Montana Plein Sud (apartments)',
+        tier: 'Apartment',
+        description:
+          'South-facing slope-side apartment residence with spa/pool access: 2-bed 55 m² (4 pax), 3-bed 75 m² (6 pax), 4-bed 100 m² (8 pax). Self-catered.',
+        price: 2600,
+        currency: 'EUR',
+        unit: 'per_unit_week',
+        capacity: 4,
+        vatRate: 0.10,
+        url: 'https://www.village-montana.com/en/val-thorens/residence-montana-plein-sud',
+        contact: '+33 4 26 78 26 78 (Mon–Thu 9–18, Fri 9–17)',
+        imageUrl: 'https://www.village-montana.com/sites/default/files/image/le%20plein%20sud-28.jpg',
+        note: 'Estimate for a 2-bed/4-pax week — engine-priced (UK operator from ~£904 pp/week). WINTER27 code: −10% early booking on 7-night stays. Position approximate.',
       },
     ],
   },
@@ -156,7 +292,7 @@ export const components: TripComponent[] = [
     icon: '🚐',
     defaultEnabled: true,
     defaultOptionId: 'transfer-bensbus',
-    unitHint: '155 km, ~3 h 20 each way',
+    unitHint: '155 km, ~3 h each way',
     options: [
       {
         id: 'transfer-bensbus',
@@ -174,6 +310,51 @@ export const components: TripComponent[] = [
         note: '2026/27 published: £94 return pp (group rate from £80 return). No weekday services.',
       },
       {
+        id: 'transfer-snowbus',
+        name: 'Snowbus shared coach',
+        tier: 'Budget',
+        description:
+          'UK-run shared transfer GVA → Val Thorens (~2h45–3h30), weekend departures plus a reduced weekday timetable — the shared option when Ben\'s Bus doesn\'t run.',
+        price: 128,
+        currency: 'EUR',
+        unit: 'per_person',
+        vatRate: 0.10,
+        url: 'https://www.snowbus.co.uk/Val-Thorens.html',
+        contact: 'info@snowbus.co.uk',
+        imageUrl: 'https://www.snowbus.co.uk/Media/contentimages/26_thumb.jpg',
+        note: 'From £55 single pp (2025/26) → ~€128 return. Books via snowcompare.com.',
+      },
+      {
+        id: 'transfer-train',
+        name: 'Train + Altibus (public transport)',
+        tier: 'Budget',
+        description:
+          'TER Geneva → Moûtiers via Chambéry (~3h15–3h45), then Trans-Savoie line S63 coach Moûtiers → Val Thorens (~1h; luggage + skis included). Runs every day — the flexible budget route.',
+        price: 90,
+        currency: 'EUR',
+        unit: 'per_person',
+        vatRate: 0.10,
+        url: 'https://www.sncf-connect.com/en-en/train/route/geneva/moutiers',
+        contact: 'Altibus booking: booking.altibus.com · altibus.com/en/contact',
+        note: 'Return estimate: train €20–45 each way advance + S63 ~€24 return (−10% online ≥48h ahead; child −30%).',
+      },
+      {
+        id: 'transfer-coolrunnings',
+        name: 'Cool Runnings private van (1–8 pax)',
+        tier: 'Mid',
+        description:
+          'Val Thorens-based operator with Renault Trafic / Mercedes V-Class vans from Geneva, Lyon, Chambéry and Moûtiers; shared seats sometimes available at a discount.',
+        price: 640,
+        currency: 'EUR',
+        unit: 'per_vehicle_return',
+        capacity: 8,
+        vatRate: 0.10,
+        url: 'https://www.coolrunnings.eu/',
+        contact: 'info@coolrunnings.eu · +33 9 70 01 94 45 · +44 20 8089 4323',
+        imageUrl: 'https://www.coolrunnings.eu/wp-content/uploads/2017/08/transfers-to-val-thorens.jpg',
+        note: 'Quote-based; comparable 3-Valleys vans ~€290/van one way. Planning figure per van return.',
+      },
+      {
         id: 'transfer-alpybus',
         name: 'Alpybus private van (1–8 pax)',
         tier: 'Premium',
@@ -182,8 +363,8 @@ export const components: TripComponent[] = [
         price: 700,
         currency: 'EUR',
         unit: 'per_vehicle_return',
-        vatRate: 0.10,
         capacity: 8,
+        vatRate: 0.10,
         url: 'https://www.alpybus.com/transfers/geneva-val-thorens',
         contact: 'info@alpybus.com · +41 24 539 10 17 · +44 1582 377 197',
         note: 'From ~€330/vehicle one-way off-peak; €600–900 return planning band, peak Saturdays top of band.',
@@ -235,16 +416,46 @@ export const components: TripComponent[] = [
     unitHint: 'Skis + boots + helmet',
     options: [
       {
+        id: 'rental-intersport',
+        name: 'Intersport economy pack',
+        tier: 'Budget',
+        description:
+          '5 shops in resort; 6-day rentals include the 7th day free and Saturday early pickup at no charge. Up to 30–50% off online.',
+        price: 85,
+        currency: 'EUR',
+        unit: 'per_person',
+        vatRate: 0.20,
+        url: 'https://www.valthorens-intersport.com/en/',
+        contact: '+33 4 79 00 01 72',
+        note: 'Adult economy ski+boots from ~€10/day online → ~€60–100/6-day pack; engine-priced.',
+      },
+      {
+        id: 'rental-skirepublic',
+        name: 'Ski Republic adult pack',
+        tier: 'Budget',
+        description:
+          'Discount chain (Chamois Sport / Péclet shops) advertising up to 60% off online; 6-or-7-day adult full packs.',
+        price: 95,
+        currency: 'EUR',
+        unit: 'per_person',
+        vatRate: 0.20,
+        url: 'https://www.ski-republic.com/en/ski-stations/val-thorens',
+        contact: 'Via Val Thorens Réservation +33 4 79 00 01 06',
+        imageUrl: 'https://www.ski-republic.com/sites/default/files/styles/listing_image_magasin_465x250/public/2025-01/Ski%20Republic%20Chamois%20Sport%20-%20Val%20Thorens.jpg',
+        note: 'From ~€15/day adult pack online; 6/7-day priced via engine.',
+      },
+      {
         id: 'rental-prosneige',
         name: 'Prosneige 3★ "Sensation" pack',
+        tier: 'Mid',
         description:
-          'Mid-tier skis or board + boots, fitted in the resort shop (open 9:00–19:00 daily), online booking discounts, free mid-week swaps.',
+          'Quality mid-range skis or board + boots, fitted in the resort shop (open 9:00–19:00 daily), online booking discounts, free mid-week swaps.',
         price: 245,
         currency: 'EUR',
         unit: 'per_person',
         vatRate: 0.20,
         url: 'https://en.prosneige.fr/info-val-thorens-equipment-rental-prices/',
-        contact: 'Form: en.prosneige.fr/info-contact-us',
+        contact: 'info@prosneige.fr · +33 4 79 01 07 00',
         note: '€226 skis+boots (verified) + ~€15–20 helmet in the engine. Rental carries 20% French VAT.',
       },
       {
@@ -273,6 +484,7 @@ export const components: TripComponent[] = [
       {
         id: 'ins-us-policy',
         name: 'World Nomads Standard (US resident)',
+        tier: 'Budget',
         description:
           '10-day Europe policy with skiing included on all plans: emergency medical, evacuation, trip protection.',
         price: 85,
@@ -281,6 +493,32 @@ export const components: TripComponent[] = [
         vatRate: 0,
         url: 'https://www.worldnomads.com/usa/travel-insurance-for-skiing-and-snowboarding',
         note: 'Verified band ~$50–100 for 10 days (age- and trip-cost-dependent; ~$37/7 days at age 30).',
+      },
+      {
+        id: 'ins-travelex',
+        name: 'Travelex Ultimate',
+        tier: 'Premium',
+        description:
+          'Comprehensive single-trip plan: up to $50k cancellation, $250k primary emergency medical, $2k baggage/delay.',
+        price: 150,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.travelexinsurance.com/travel-insurance/plans/ultimate',
+        note: 'Starts ~$46; typically ~5–8% of insured trip cost by age. Quote per traveler.',
+      },
+      {
+        id: 'ins-img',
+        name: 'IMG iTravelInsured Travel SE',
+        tier: 'Mid',
+        description:
+          'Mid-tier comprehensive plan with cancellation/interruption, missed connection and travel delay benefits.',
+        price: 130,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.imglobal.com/travel-insurance/itravelinsured-travel-se',
+        note: '~$102 for a 45-y-o on a $2,000 7-day trip; scales with trip cost/length. Alt: Allianz OneTrip Prime from ~$98.',
       },
       {
         id: 'ins-carre-neige',
@@ -317,6 +555,35 @@ export const components: TripComponent[] = [
         contact: '+33 4 79 00 02 86 · bookings +33 4 79 00 01 06 · WhatsApp +33 6 13 88 55 92',
         imageUrl: 'https://ublo-file-manager.valraiso.net/assets/esfvalthorens/1500_750/IMG_8325.jpg',
         note: 'Verified €230–240 (2025/26). ESF tuition is VAT-exempt (sports education).',
+      },
+      {
+        id: 'prosneige-group',
+        name: 'Prosneige group course — 6 mornings',
+        tier: 'Mid',
+        description:
+          'Independent English-speaking school, small groups of 4–10. Published tariff: €298 mid / €388 high / €437 very-high season.',
+        price: 298,
+        currency: 'EUR',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://en.prosneige.fr/info-prices-and-lesson-times-val-thorens/',
+        contact: 'info@prosneige.fr · +33 4 79 01 07 00',
+        imageUrl: 'https://en.prosneige.fr/wp-content/uploads/2020/07/snowboard-lessons-prosneige.jpg',
+        note: '2025/26 published tariff. Full days 6× from €459.',
+      },
+      {
+        id: 'skicool-daily',
+        name: 'Ski Cool group lesson (per day)',
+        tier: 'Budget',
+        description:
+          'Val Thorens school since 1981, certified multilingual instructors, adult groups capped at 8. Pay per 3-hour day.',
+        price: 43,
+        currency: 'EUR',
+        unit: 'per_person_day',
+        vatRate: 0,
+        url: 'https://www.ski-cool.com/en/',
+        contact: 'commandes@ski-cool.fr · +33 4 79 00 04 92',
+        note: 'From ~€43/day (CheckYeti 2025/26). Alt: Oxygène from ~€47/day.',
       },
       {
         id: 'esf-private',

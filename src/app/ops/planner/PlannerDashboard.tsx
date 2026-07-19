@@ -200,10 +200,77 @@ const fmt = (n: number) =>
 /* US benchmark, published estimates (see /trips sources). Per person. */
 const US_BENCH = { lo: 5500, hi: 9400 };
 
+/* ---------- concrete US reference packages (every line sourced) ---------- */
+
+interface UsLine { label: string; usd: number; source: string; url: string; }
+interface UsPackage {
+  id: string;
+  name: string;
+  blurb: string;
+  perPersonNote?: string;
+  lines: UsLine[]; // per person
+}
+
+const US_PACKAGES: UsPackage[] = [
+  {
+    id: 'vail-peak',
+    name: 'Vail, CO — peak week at window rates',
+    blurb: '7 nights mid-tier lodging, 6 ski days bought at the ticket window in peak season.',
+    lines: [
+      { label: 'Domestic round-trip flight (to Eagle/Denver)', usd: 400, source: 'Dollar Flight Club 25/26 ski-season report', url: 'https://dollarflightclub.com/articles/2025-26-ski-season-flight-deals/' },
+      { label: 'Lodging 7 nights, mid-tier ~$700/room ÷ 2', usd: 2450, source: 'VailVacay price comparison ($600–800/night Lionshead)', url: 'https://www.vailvacay.com/blog/which-is-more-expensive-vail-or-aspen' },
+      { label: 'Lift tickets 6 days × $356 window', usd: 2136, source: 'SnowBrains — record $356 window price', url: 'https://snowbrains.com/vail-resorts-peak-lift-ticket-prices-hit-record-356-with-six-mountains-now-overs-300/' },
+      { label: 'Rental 6 days × $72 resort shop', usd: 432, source: 'Alpine Base & Edge 2026 cost stats', url: 'https://skiboulder.com/blogs/news/how-much-does-skiing-cost-in-2026-50-data-points-on-lift-tickets-gear-rentals-the-real-price-of-a-day-on-the-mountain-1' },
+      { label: 'Food & incidentals 7 days × $150', usd: 1050, source: 'Time Out / Casino.org all-in daily analysis', url: 'https://www.timeout.com/usa/news/here-are-the-top-20-most-expensive-ski-resorts-in-the-u-s-123125' },
+    ],
+  },
+  {
+    id: 'parkcity-feb',
+    name: 'Park City, UT — February week',
+    blurb: '7 nights at the official February average daily rate, 6 window lift days.',
+    lines: [
+      { label: 'Domestic round-trip flight (SLC)', usd: 350, source: 'Dollar Flight Club 25/26 ski-season report', url: 'https://dollarflightclub.com/articles/2025-26-ski-season-flight-deals/' },
+      { label: 'Lodging 7 nights × $915 Feb ADR ÷ 2', usd: 3203, source: 'Park Record — Chamber lodging data ($915 Feb ADR)', url: 'https://www.parkrecord.com/2025/12/19/most-expensive-in-united-states-park-city-lodging-data-says-otherwise/' },
+      { label: 'Lift tickets 6 days × $351 window', usd: 2106, source: 'SnowBrains — 2025/26 window prices', url: 'https://snowbrains.com/vail-resorts-peak-lift-ticket-prices-hit-record-356-with-six-mountains-now-overs-300/' },
+      { label: 'Rental 6 days × $48 town shop', usd: 288, source: 'Alpine Base & Edge 2026 cost stats', url: 'https://skiboulder.com/blogs/news/how-much-does-skiing-cost-in-2026-50-data-points-on-lift-tickets-gear-rentals-the-real-price-of-a-day-on-the-mountain-1' },
+      { label: 'Food & incidentals 7 days × $125', usd: 875, source: 'Time Out / Casino.org ($1,225/day all-in Park City)', url: 'https://www.timeout.com/usa/news/here-are-the-top-20-most-expensive-ski-resorts-in-the-u-s-123125' },
+    ],
+  },
+  {
+    id: 'breck-family',
+    name: 'Breckenridge — published family study (per person)',
+    blurb: 'SnowBrains family-of-four case study (6 nights / 5 ski days), shown per person, indexed +11% per NSAA since 2022/23.',
+    perPersonNote: 'Study total $9,968 for 2 adults + kids 14 & 10 → ÷4, ×1.11 NSAA trip-cost inflation.',
+    lines: [
+      { label: 'Airfare (family $1,200 ÷ 4, ×1.11)', usd: 333, source: 'SnowBrains family ski vacation study', url: 'https://snowbrains.com/will-a-family-ski-vacation-cost-over-10000-this-season/' },
+      { label: 'Rental car ($900 ÷ 4, ×1.11)', usd: 250, source: 'SnowBrains family ski vacation study', url: 'https://snowbrains.com/will-a-family-ski-vacation-cost-over-10000-this-season/' },
+      { label: 'Lift tickets ($1,640 ÷ 4, ×1.11)', usd: 455, source: 'SnowBrains family ski vacation study', url: 'https://snowbrains.com/will-a-family-ski-vacation-cost-over-10000-this-season/' },
+      { label: 'Equipment rentals ($1,375 ÷ 4, ×1.11)', usd: 382, source: 'SnowBrains family ski vacation study', url: 'https://snowbrains.com/will-a-family-ski-vacation-cost-over-10000-this-season/' },
+      { label: 'Lodging 6 nights ($2,874 ÷ 4, ×1.11)', usd: 798, source: 'SnowBrains family ski vacation study', url: 'https://snowbrains.com/will-a-family-ski-vacation-cost-over-10000-this-season/' },
+      { label: 'Ski school 3 days ($975 ÷ 4, ×1.11)', usd: 271, source: 'SnowBrains family ski vacation study', url: 'https://snowbrains.com/will-a-family-ski-vacation-cost-over-10000-this-season/' },
+      { label: 'Dining + misc ($1,004 ÷ 4, ×1.11)', usd: 279, source: 'SnowBrains family ski vacation study', url: 'https://snowbrains.com/will-a-family-ski-vacation-cost-over-10000-this-season/' },
+    ],
+  },
+  {
+    id: 'saver',
+    name: 'Colorado saver — Epic Day Pass, booked early',
+    blurb: 'The honest low anchor: advance Epic Day Pass, online rental, cheaper lodging.',
+    lines: [
+      { label: 'Domestic round-trip flight (Denver)', usd: 350, source: 'Dollar Flight Club 25/26 ski-season report', url: 'https://dollarflightclub.com/articles/2025-26-ski-season-flight-deals/' },
+      { label: 'Lodging 7 nights × $500/room ÷ 2', usd: 1750, source: 'Budget Your Trip / Park Record mid-range band', url: 'https://www.budgetyourtrip.com/hotels/united-states-of-america/park-city-utah-5779451' },
+      { label: 'Epic Day Pass 6 days × ~$100 (pre-season)', usd: 600, source: 'SKI Magazine — 2025/26 Epic Pass pricing', url: 'https://www.skimag.com/news/epic-pass-2025-26/' },
+      { label: 'Rental 6 days × $42 booked online', usd: 252, source: 'Alpine Base & Edge 2026 cost stats', url: 'https://skiboulder.com/blogs/news/how-much-does-skiing-cost-in-2026-50-data-points-on-lift-tickets-gear-rentals-the-real-price-of-a-day-on-the-mountain-1' },
+      { label: 'Food & incidentals 7 days × $100', usd: 700, source: 'Time Out / Casino.org all-in daily analysis', url: 'https://www.timeout.com/usa/news/here-are-the-top-20-most-expensive-ski-resorts-in-the-u-s-123125' },
+    ],
+  },
+];
+
 /* ---------- component ---------- */
 
 export default function PlannerDashboard() {
   const [profileId, setProfileId] = useState('family');
+  const [usPackageId, setUsPackageId] = useState('vail-peak');
+  const [compareScenarioId, setCompareScenarioId] = useState('comfort');
   const [adultsOverride, setAdultsOverride] = useState<number | null>(null);
   const [childrenOverride, setChildrenOverride] = useState<number | null>(null);
   const [profitPct, setProfitPct] = useState(25);
@@ -440,6 +507,121 @@ export default function PlannerDashboard() {
               </table>
             </div>
           </details>
+        </section>
+
+        {/* one-to-one: Bonvo scenario vs a sourced US reference week */}
+        <section className="mt-10 rounded-[1.75rem] border border-black/5 bg-white p-7 shadow-[0_20px_50px_-18px_rgba(29,29,31,0.12)]">
+          <h2 className="text-lg font-bold tracking-tight">One-to-one: your package vs a real US week</h2>
+          <p className="mt-1 text-sm text-[#6e6e73]">
+            Each US reference package is built line by line from published 2025/26-season sources —
+            every line links to where the number came from. Pick one and compare per-person.
+          </p>
+
+          {/* US package selector */}
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {US_PACKAGES.map((p) => {
+              const total = p.lines.reduce((a, l) => a + l.usd, 0);
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setUsPackageId(p.id)}
+                  className={cn(
+                    'rounded-2xl border p-4 text-left transition-all',
+                    p.id === usPackageId
+                      ? 'border-indigo-400 bg-white shadow-[0_14px_34px_-10px_rgba(99,102,241,0.35)] ring-2 ring-indigo-400'
+                      : 'border-black/10 bg-white hover:border-black/25'
+                  )}
+                >
+                  <span className="block text-sm font-semibold leading-snug">{p.name}</span>
+                  <span className="mt-1 block text-lg font-bold tabular-nums">{fmt(total)}<span className="text-xs font-medium text-[#a1a1a6]"> /person</span></span>
+                  <span className="mt-1 block text-[11px] leading-snug text-[#a1a1a6]">{p.blurb}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {(() => {
+            const usPkg = US_PACKAGES.find((p) => p.id === usPackageId)!;
+            const usTotal = usPkg.lines.reduce((a, l) => a + l.usd, 0);
+            const scenario = scenarios.find((s) => s.id === compareScenarioId)!;
+            const delta = usTotal - scenario.perPerson;
+            return (
+              <div className="mt-8">
+                {/* delta headline + scenario picker */}
+                <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-br from-sky-50 to-indigo-50 px-5 py-4">
+                  <p className="text-sm">
+                    <span className="font-bold">{usPkg.name}</span>
+                    <span className="text-[#6e6e73]"> vs </span>
+                    <select
+                      value={compareScenarioId}
+                      onChange={(e) => setCompareScenarioId(e.target.value)}
+                      className="rounded-lg border border-black/10 bg-white px-2 py-1 text-sm font-semibold"
+                    >
+                      {scenarios.map((s) => (
+                        <option key={s.id} value={s.id}>Bonvo {s.name}</option>
+                      ))}
+                    </select>
+                  </p>
+                  <p className={cn('text-sm font-bold', delta > 0 ? 'text-emerald-600' : 'text-amber-600')}>
+                    {delta > 0
+                      ? `Bonvo is ${fmt(delta)} cheaper per person — and includes transatlantic flights`
+                      : `Bonvo is ${fmt(-delta)} more per person on this pairing`}
+                  </p>
+                </div>
+
+                <div className="mt-6 grid gap-8 md:grid-cols-2">
+                  {/* US column */}
+                  <div>
+                    <div className="flex items-baseline justify-between border-b-2 border-[#1d1d1f] pb-2">
+                      <p className="text-sm font-bold">{usPkg.name}</p>
+                      <p className="text-sm font-bold tabular-nums">{fmt(usTotal)} /pp</p>
+                    </div>
+                    <ul className="mt-3 space-y-2.5">
+                      {usPkg.lines.map((l) => (
+                        <li key={l.label} className="text-xs">
+                          <span className="flex items-baseline justify-between gap-3">
+                            <span className="text-[#494949]">{l.label}</span>
+                            <span className="whitespace-nowrap font-medium tabular-nums">{fmt(l.usd)}</span>
+                          </span>
+                          <a href={l.url} target="_blank" rel="noreferrer"
+                            className="text-[11px] text-indigo-600 underline underline-offset-2 hover:text-indigo-800">
+                            {l.source} ↗
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                    {usPkg.perPersonNote && (
+                      <p className="mt-3 text-[11px] text-[#a1a1a6]">{usPkg.perPersonNote}</p>
+                    )}
+                  </div>
+
+                  {/* Bonvo column */}
+                  <div>
+                    <div className="flex items-baseline justify-between border-b-2 border-indigo-500 pb-2">
+                      <p className="text-sm font-bold">Bonvo {scenario.name} — Val Thorens ({people} pax party)</p>
+                      <p className="text-sm font-bold tabular-nums text-indigo-600">{fmt(scenario.perPerson)} /pp</p>
+                    </div>
+                    <ul className="mt-3 space-y-2.5">
+                      {scenario.lines.map((l, i) => (
+                        <li key={i} className="flex items-baseline justify-between gap-3 text-xs">
+                          <span className="flex items-center gap-1.5 text-[#494949]">
+                            <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: SERIES[l.componentId].color }} />
+                            {l.label}
+                          </span>
+                          <span className="whitespace-nowrap font-medium tabular-nums">{fmt(l.usd / people)} /pp</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-3 text-[11px] text-[#a1a1a6]">
+                      Includes round-trip transatlantic flights, transfers, half-board dinners and
+                      insurance — lines the US reference prices separately or not at all. Supplier
+                      links live in the <Link href="/ops/trip-builder" className="underline">cost builder</Link>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         {/* line detail per scenario */}

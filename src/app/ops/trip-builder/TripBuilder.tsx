@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import {
@@ -35,6 +35,18 @@ interface LiveSelection {
   source: 'amadeus' | 'reference';
 }
 
+interface Traveler {
+  id: string;
+  name: string;
+}
+
+// Per-traveler assignment inside a split component: a real option id,
+// 'custom' (with per-person USD price), or 'none' (own arrangement, $0).
+interface Assignment {
+  optionId: string;
+  customPrice?: string;
+}
+
 interface ComponentConfig {
   enabled: boolean;
   optionId: string; // option id, 'custom', or 'live'
@@ -43,6 +55,8 @@ interface ComponentConfig {
   customBasis: 'per_person' | 'total';
   live?: LiveSelection;
   liveId?: string;
+  split: boolean;
+  assignments: Record<string, Assignment>; // travelerId → assignment
 }
 
 interface Line {
@@ -54,8 +68,34 @@ interface Line {
   option?: SupplierOption;
 }
 
+// One option-group inside a split component: the travelers sharing one choice.
+interface SplitGroup {
+  component: TripComponent;
+  key: string; // option id | 'custom' | 'none'
+  label: string;
+  shortLabel: string;
+  detail: string;
+  members: Traveler[];
+  totalUSD: number;
+  vatUSD: number;
+  memberShare: Record<string, number>; // travelerId → USD attributed
+}
+
 const CUSTOM = 'custom';
 const LIVE = 'live';
+const NONE = 'none';
+
+function shortOptionLabel(name: string): string {
+  const clean = name.replace(/ ★+S?/gu, '').trim();
+  return clean.length > 22 ? `${clean.slice(0, 22)}…` : clean;
+}
+
+// The option a traveler falls back to when split mode has no explicit pick.
+function fallbackAssignId(component: TripComponent, cfg: ComponentConfig): string {
+  return component.options.some((o) => o.id === cfg.optionId)
+    ? cfg.optionId
+    : component.defaultOptionId;
+}
 
 function optionQuantity(
   option: SupplierOption,
@@ -380,7 +420,32 @@ function LiveHotelPanel({
 /* ---------- main component ---------- */
 
 export default function TripBuilder() {
-  const [people, setPeople] = useState(2);
+  const [travelers, setTravelers] = useState<Traveler[]>([
+    { id: 't1', name: 'Traveler 1' },
+    { id: 't2', name: 'Traveler 2' },
+  ]);
+  const travelerIdRef = useRef(3);
+  const people = travelers.length;
+
+  const setPeopleCount = (n: number) => {
+    const target = Math.max(1, Math.floor(n) || 1);
+    setTravelers((prev) => {
+      if (target === prev.length) return prev;
+      if (target < prev.length) return prev.slice(0, target);
+      const next = [...prev];
+      while (next.length < target) {
+        next.push({ id: `t${travelerIdRef.current++}`, name: `Traveler ${next.length + 1}` });
+      }
+      return next;
+    });
+  };
+
+  const renameTraveler = (id: string, name: string) =>
+    setTravelers((prev) => prev.map((t) => (t.id === id ? { ...t, name } : t)));
+
+  const removeTraveler = (id: string) =>
+    setTravelers((prev) => (prev.length <= 1 ? prev : prev.filter((t) => t.id !== id)));
+
   const [nights, setNights] = useState(7);
   const [skiDays, setSkiDays] = useState(6);
   const [fx, setFx] = useState(1.1); // EUR → USD
@@ -419,6 +484,8 @@ export default function TripBuilder() {
           customLabel: '',
           customPrice: '',
           customBasis: 'per_person' as const,
+          split: false,
+          assignments: {} as Record<string, Assignment>,
         },
       ])
     )
@@ -427,11 +494,124 @@ export default function TripBuilder() {
   const patch = (id: string, p: Partial<ComponentConfig>) =>
     setConfig((prev) => ({ ...prev, [id]: { ...prev[id], ...p } }));
 
+  const toggleSplit = (component: TripComponent) =>
+    setConfig((prev) => {
+      const cfg = prev[component.id];
+      if (!cfg.split) {
+        const def = fallbackAssignId(component, cfg);
+        const assignments = { ...cfg.assignments };
+        for (const t of travelers) {
+          if (!assignments[t.id]) assignments[t.id] = { optionId: def };
+        }
+        return { ...prev, [component.id]: { ...cfg, split: true, assignments } };
+      }
+      return { ...prev, [component.id]: { ...cfg, split: false } };
+    });
+
+  const assign = (componentId: string, travelerId: string, a: Partial<Assignment>) =>
+    setConfig((prev) => {
+      const cfg = prev[componentId];
+      const current = cfg.assignments[travelerId] ?? { optionId: NONE };
+      return {
+        ...prev,
+        [componentId]: {
+          ...cfg,
+          assignments: { ...cfg.assignments, [travelerId]: { ...current, ...a } },
+        },
+      };
+    });
+
+  /* ---- split allocation: option-groups per split component ---- */
+  const splitGroups: SplitGroup[] = useMemo(() => {
+    const out: SplitGroup[] = [];
+    for (const component of components) {
+      const cfg = config[component.id];
+      if (!cfg?.enabled || !cfg.split) continue;
+
+      const byKey = new Map<string, Traveler[]>();
+      for (const t of travelers) {
+        const key = cfg.assignments[t.id]?.optionId ?? fallbackAssignId(component, cfg);
+        const list = byKey.get(key);
+        if (list) list.push(t);
+        else byKey.set(key, [t]);
+      }
+
+      for (const [key, members] of byKey) {
+        const k = members.length;
+        if (key === NONE) {
+          out.push({
+            component, key,
+            label: 'Own arrangement',
+            shortLabel: 'Own',
+            detail: `${k} traveler${k > 1 ? 's' : ''}, no package cost`,
+            members, totalUSD: 0, vatUSD: 0,
+            memberShare: Object.fromEntries(members.map((t) => [t.id, 0])),
+          });
+          continue;
+        }
+        if (key === CUSTOM) {
+          const memberShare: Record<string, number> = {};
+          let total = 0;
+          for (const t of members) {
+            const v = parseFloat(cfg.assignments[t.id]?.customPrice ?? '') || 0;
+            memberShare[t.id] = v;
+            total += v;
+          }
+          out.push({
+            component, key,
+            label: 'Custom price',
+            shortLabel: 'Custom',
+            detail: `${k} traveler${k > 1 ? 's' : ''}, manual per-person prices`,
+            members, totalUSD: total, vatUSD: 0, memberShare,
+          });
+          continue;
+        }
+        const option = component.options.find((o) => o.id === key);
+        if (!option) continue;
+        const { qty, detail } = optionQuantity(option, k, nights, skiDays);
+        const gross = option.price * qty * (option.currency === 'EUR' ? fx : 1);
+        const vat = gross - gross / (1 + option.vatRate);
+        const unitUSD = option.price * (option.currency === 'EUR' ? fx : 1);
+        // Per-person units attribute exactly; pooled units (rooms, vans,
+        // apartments, per-group) split evenly among the sharing travelers.
+        const perMember =
+          option.unit === 'per_person' ? unitUSD :
+          option.unit === 'per_person_night' ? unitUSD * nights :
+          option.unit === 'per_person_day' ? unitUSD * skiDays :
+          gross / k;
+        out.push({
+          component, key,
+          label: option.name,
+          shortLabel: shortOptionLabel(option.name),
+          detail,
+          members, totalUSD: gross, vatUSD: vat,
+          memberShare: Object.fromEntries(members.map((t) => [t.id, perMember])),
+        });
+      }
+    }
+    return out;
+  }, [config, travelers, nights, skiDays, fx]);
+
+  const anySplit = components.some((c) => config[c.id]?.enabled && config[c.id]?.split);
+
   const lines: Line[] = useMemo(() => {
     const out: Line[] = [];
     for (const component of components) {
       const cfg = config[component.id];
       if (!cfg?.enabled) continue;
+
+      if (cfg.split) {
+        for (const g of splitGroups.filter((g) => g.component.id === component.id)) {
+          out.push({
+            component,
+            label: `${g.label} × ${g.members.length}`,
+            detail: g.detail,
+            totalUSD: g.totalUSD,
+            vatUSD: g.vatUSD,
+          });
+        }
+        continue;
+      }
 
       if (cfg.optionId === CUSTOM) {
         const price = parseFloat(cfg.customPrice) || 0;
@@ -471,9 +651,45 @@ export default function TripBuilder() {
       out.push({ component, label: option.name, detail, totalUSD: gross, vatUSD: vat, option });
     }
     return out;
-  }, [config, people, nights, skiDays, fx]);
+  }, [config, people, nights, skiDays, fx, splitGroups]);
 
   const realTotal = lines.reduce((s, l) => s + l.totalUSD, 0);
+
+  /* ---- per-traveler attribution ----
+     Split components: exact per-person units, pooled items split evenly among
+     their sharing group. Non-split components: divided across all travelers. */
+  const perTraveler = useMemo(() => {
+    const nonSplitTotal = lines
+      .filter((l) => !config[l.component.id]?.split)
+      .reduce((s, l) => s + l.totalUSD, 0);
+    const nonSplitShare = people > 0 ? nonSplitTotal / people : 0;
+    return travelers.map((t) => {
+      let total = nonSplitShare;
+      const picks: string[] = [];
+      for (const g of splitGroups) {
+        if (t.id in g.memberShare) {
+          total += g.memberShare[t.id];
+          picks.push(g.shortLabel);
+        }
+      }
+      return { traveler: t, total, picks };
+    });
+  }, [lines, splitGroups, travelers, people, config]);
+
+  // travelerId → (componentId → shortLabel), for the print appendix.
+  const assignmentTable = useMemo(() => {
+    const map: Record<string, Record<string, string>> = {};
+    for (const g of splitGroups) {
+      for (const t of g.members) {
+        (map[t.id] ??= {})[g.component.id] = g.shortLabel;
+      }
+    }
+    return map;
+  }, [splitGroups]);
+
+  const splitComponents = components.filter(
+    (c) => config[c.id]?.enabled && config[c.id]?.split
+  );
   const vatTotal = lines.reduce((s, l) => s + l.vatUSD, 0);
   const bufferedTotal = realTotal * buffer;
   const finalTotal = bufferedTotal * (1 + profitPct / 100);
@@ -533,11 +749,49 @@ export default function TripBuilder() {
 
             {/* Trip parameters */}
             <div className="neo-card-sm mt-8 grid grid-cols-2 gap-4 p-6 md:grid-cols-4">
-              <NumberField label="Travelers" value={people} onChange={(v) => setPeople(Math.max(1, v))} min={1} />
+              <NumberField label="Travelers" value={people} onChange={setPeopleCount} min={1} />
               <NumberField label="Hotel nights" value={nights} onChange={(v) => setNights(Math.max(1, v))} min={1} />
               <NumberField label="Ski days" value={skiDays} onChange={(v) => setSkiDays(Math.max(1, v))} min={1} />
               <NumberField label="EUR → USD rate" value={fx} onChange={setFx} min={0.5} step={0.01} />
             </div>
+
+            {/* Traveler roster */}
+            <details className="neo-card-sm mt-4 p-5">
+              <summary className="cursor-pointer text-sm font-semibold">
+                👥 Travelers — {people}
+                <span className="ml-2 font-normal text-[#a1a1a6]">
+                  name them for per-person planning
+                </span>
+              </summary>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                {travelers.map((t) => (
+                  <div key={t.id} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={t.name}
+                      onChange={(e) => renameTraveler(t.id, e.target.value)}
+                      className="min-w-0 flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeTraveler(t.id)}
+                      disabled={travelers.length <= 1}
+                      aria-label={`Remove ${t.name}`}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/5 text-sm text-[#6e6e73] transition-colors hover:bg-black/10 disabled:opacity-40"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPeopleCount(people + 1)}
+                className="mt-3 rounded-full bg-black/5 px-4 py-1.5 text-xs font-semibold text-[#494949] transition-colors hover:bg-black/10"
+              >
+                + Add traveler
+              </button>
+            </details>
 
             {/* Components */}
             {components.map((component) => {
@@ -557,7 +811,21 @@ export default function TripBuilder() {
                       </span>
                     </label>
                     <span className="flex items-center gap-3">
-                      {component.id === 'hotel' && cfg.enabled && (
+                      {cfg.enabled && (
+                        <button
+                          type="button"
+                          onClick={() => toggleSplit(component)}
+                          className={cn(
+                            'rounded-full px-4 py-1.5 text-xs font-semibold transition-colors',
+                            cfg.split
+                              ? 'bg-indigo-500 text-white'
+                              : 'bg-black/5 text-[#494949] hover:bg-black/10'
+                          )}
+                        >
+                          {cfg.split ? '👥 Split: on' : 'Split per traveler'}
+                        </button>
+                      )}
+                      {component.id === 'hotel' && cfg.enabled && !cfg.split && (
                         <button
                           type="button"
                           onClick={() => setShowMap((v) => !v)}
@@ -566,13 +834,13 @@ export default function TripBuilder() {
                           {showMap ? 'Hide map' : 'Show map'}
                         </button>
                       )}
-                      <span className="text-xs font-medium uppercase tracking-wide text-[#a1a1a6]">
+                      <span className="hidden text-xs font-medium uppercase tracking-wide text-[#a1a1a6] sm:inline">
                         {component.unitHint}
                       </span>
                     </span>
                   </div>
 
-                  {component.id === 'hotel' && cfg.enabled && showMap && (
+                  {component.id === 'hotel' && cfg.enabled && showMap && !cfg.split && (
                     <div className="mt-4">
                       <HotelMap
                         hotels={component.options
@@ -596,6 +864,7 @@ export default function TripBuilder() {
                     </div>
                   )}
 
+                  {!cfg.split && (
                   <div
                     className={cn(
                       'mt-4 grid gap-4',
@@ -804,9 +1073,66 @@ export default function TripBuilder() {
                       )}
                     </div>
                   </div>
+                  )}
+
+                  {/* Per-traveler allocation matrix */}
+                  {cfg.enabled && cfg.split && (
+                    <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-5">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <p className="text-sm font-semibold">Per-traveler assignment</p>
+                        <p className="text-[11px] text-[#6e6e73]">
+                          Rooms, vans, apartments and group items are pooled per option and split
+                          evenly among the travelers sharing them.
+                        </p>
+                      </div>
+                      <div className="mt-3 grid gap-2">
+                        {travelers.map((t) => {
+                          const a =
+                            cfg.assignments[t.id] ?? { optionId: fallbackAssignId(component, cfg) };
+                          return (
+                            <div
+                              key={t.id}
+                              className="flex flex-wrap items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2"
+                            >
+                              <span className="w-28 truncate text-sm font-medium" title={t.name}>
+                                {t.name}
+                              </span>
+                              <select
+                                value={a.optionId}
+                                onChange={(e) =>
+                                  assign(component.id, t.id, { optionId: e.target.value })
+                                }
+                                className="min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-2 py-1.5 text-sm focus:outline-none"
+                              >
+                                {component.options.map((o) => (
+                                  <option key={o.id} value={o.id}>
+                                    {o.name} — {o.currency === 'EUR' ? '€' : '$'}
+                                    {o.price.toLocaleString()} {UNIT_LABEL[o.unit]}
+                                  </option>
+                                ))}
+                                <option value={CUSTOM}>Custom price…</option>
+                                <option value={NONE}>None — own arrangement</option>
+                              </select>
+                              {a.optionId === CUSTOM && (
+                                <input
+                                  type="number"
+                                  placeholder="USD pp"
+                                  value={a.customPrice ?? ''}
+                                  onChange={(e) =>
+                                    assign(component.id, t.id, { customPrice: e.target.value })
+                                  }
+                                  className="w-24 rounded-lg border border-black/10 px-2 py-1.5 text-sm focus:border-sky-400 focus:outline-none"
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Live pulls for flights & hotels */}
-                  {component.id === 'flights' && cfg.enabled && (
+                  {component.id === 'flights' && cfg.enabled && !cfg.split && (
                     <LiveFlightPanel
                       people={people}
                       selectedId={cfg.optionId === LIVE ? cfg.liveId ?? null : null}
@@ -827,7 +1153,7 @@ export default function TripBuilder() {
                       }
                     />
                   )}
-                  {component.id === 'hotel' && cfg.enabled && (
+                  {component.id === 'hotel' && cfg.enabled && !cfg.split && (
                     <LiveHotelPanel
                       people={people}
                       selectedId={cfg.optionId === LIVE ? cfg.liveId ?? null : null}
@@ -889,8 +1215,8 @@ export default function TripBuilder() {
               </div>
 
               <ul className="mt-5 space-y-2.5 border-t border-black/5 pt-4 text-sm">
-                {lines.map((l) => (
-                  <li key={l.component.id} className="flex items-baseline justify-between gap-3">
+                {lines.map((l, i) => (
+                  <li key={`${l.component.id}-${i}`} className="flex items-baseline justify-between gap-3">
                     <span>
                       <span className="font-medium">{l.component.icon} {l.label}</span>
                       <span className="block text-xs text-[#a1a1a6]">{l.detail}</span>
@@ -902,6 +1228,53 @@ export default function TripBuilder() {
                   <li className="text-sm text-[#a1a1a6]">Nothing enabled yet.</li>
                 )}
               </ul>
+
+              {anySplit && (
+                <div className="mt-4 border-t border-black/5 pt-4">
+                  <details open>
+                    <summary className="cursor-pointer text-sm font-semibold text-indigo-600">
+                      By traveler
+                    </summary>
+                    <ul className="mt-2 space-y-2 text-xs">
+                      {perTraveler.map((pt) => (
+                        <li key={pt.traveler.id} className="flex items-baseline justify-between gap-3">
+                          <span className="min-w-0 text-[#494949]">
+                            <span className="font-medium">{pt.traveler.name}</span>
+                            <span className="block truncate text-[11px] text-[#a1a1a6]">
+                              {pt.picks.join(', ') || 'shared services only'}
+                            </span>
+                          </span>
+                          <span className="whitespace-nowrap font-semibold">{fmtUSD2(pt.total)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 text-[10px] leading-relaxed text-[#a1a1a6]">
+                      Shared rooms, vans, apartments and group items are split evenly among the
+                      travelers using them; components without per-traveler split are divided
+                      across everyone.
+                    </p>
+                  </details>
+
+                  <div className="mt-3 space-y-1.5 text-[11px] text-[#6e6e73]">
+                    <p className="text-xs font-semibold text-[#494949]">Shared services</p>
+                    {splitComponents.map((c) => (
+                      <p key={c.id} className="leading-relaxed">
+                        {c.icon}{' '}
+                        {splitGroups
+                          .filter((g) => g.component.id === c.id)
+                          .map(
+                            (g) =>
+                              `${g.shortLabel}: ${g.members
+                                .slice(0, 2)
+                                .map((m) => m.name)
+                                .join(', ')}${g.members.length > 2 ? ` +${g.members.length - 2}` : ''}`
+                          )
+                          .join(' · ')}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 space-y-1.5 border-t border-black/5 pt-4 text-sm">
                 <p className="flex justify-between">
@@ -988,8 +1361,8 @@ export default function TripBuilder() {
               </tr>
             </thead>
             <tbody>
-              {lines.map((l) => (
-                <tr key={l.component.id} className="border-b border-black/10 align-top">
+              {lines.map((l, i) => (
+                <tr key={`${l.component.id}-${i}`} className="border-b border-black/10 align-top">
                   <td className="py-2.5 pr-4 font-medium">{l.component.icon} {l.component.label}</td>
                   <td className="py-2.5 text-[#494949]">
                     {l.label}
@@ -999,6 +1372,41 @@ export default function TripBuilder() {
               ))}
             </tbody>
           </table>
+
+          {/* Per-traveler service appendix (only when services are split) */}
+          {anySplit && (
+            <div className="mt-8">
+              <p className="text-sm font-semibold">Travelers &amp; services</p>
+              <table className="mt-2 w-full border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-black/20 text-left">
+                    <th className="py-1.5 pr-3 font-semibold">Traveler</th>
+                    {splitComponents.map((c) => (
+                      <th key={c.id} className="py-1.5 pr-3 font-semibold">
+                        {c.icon} {c.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {travelers.map((t) => (
+                    <tr key={t.id} className="border-b border-black/10">
+                      <td className="py-1.5 pr-3 font-medium">{t.name}</td>
+                      {splitComponents.map((c) => (
+                        <td key={c.id} className="py-1.5 pr-3 text-[#494949]">
+                          {assignmentTable[t.id]?.[c.id] ?? '—'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="mt-1.5 text-[10px] text-[#6e6e73]">
+                &ldquo;Own&rdquo; = the traveler arranges this part themselves; it is not included
+                in the package price.
+              </p>
+            </div>
+          )}
 
           <div className="mt-8 rounded-xl border-2 border-[#1d1d1f] p-5">
             <p className="flex justify-between text-lg font-bold">
@@ -1034,8 +1442,8 @@ export default function TripBuilder() {
                   </tr>
                 </thead>
                 <tbody>
-                  {lines.map((l) => (
-                    <tr key={l.component.id} className="border-b border-black/10">
+                  {lines.map((l, i) => (
+                    <tr key={`${l.component.id}-${i}`} className="border-b border-black/10">
                       <td className="py-1.5 pr-3">{l.component.label}</td>
                       <td className="py-1.5 pr-3">{l.label} · {l.detail}</td>
                       <td className="py-1.5 text-right">{fmtUSD2(l.totalUSD)}</td>

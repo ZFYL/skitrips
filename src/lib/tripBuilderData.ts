@@ -57,11 +57,11 @@ export const UNIT_LABEL: Record<Unit, string> = {
 export const components: TripComponent[] = [
   {
     id: 'flights',
-    label: 'Flights US ⇄ Geneva',
+    label: 'Getting there',
     icon: '✈️',
     defaultEnabled: true,
     defaultOptionId: 'flight-onestop',
-    unitHint: 'Round trip, economy',
+    unitHint: 'Round trip per traveler — mixable per person',
     options: [
       {
         id: 'flight-onestop',
@@ -112,6 +112,45 @@ export const components: TripComponent[] = [
         vatRate: 0,
         url: 'https://www.kayak.com/flight-routes/New-York-John-F-Kennedy-Intl-JFK/Geneva-Geneve-Cointrin-GVA',
         note: 'Winter nonstop band $900–$1,600 round trip.',
+      },
+      {
+        id: 'flight-eu',
+        name: 'Intra-EU flight → Geneva',
+        tier: 'From Europe',
+        description:
+          'Short-haul round trip to GVA from a European city (LHR/AMS/BER/MAD class of routes) for group members already in Europe.',
+        price: 165,
+        currency: 'EUR',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.google.com/travel/flights?q=flights%20to%20GVA',
+        note: 'Typical €80–250 round trip booked ahead; EasyJet/BA/KLM/Lufthansa. Intra-EU air is VAT-taxed domestically in some states — quoted fares are final.',
+      },
+      {
+        id: 'train-eu',
+        name: 'Rail from Europe → Moûtiers',
+        tier: 'From Europe',
+        description:
+          'High-speed rail to Moûtiers (TGV from Paris ~4h30; connections from most EU capitals) — combine with the Altibus leg up to the resort.',
+        price: 130,
+        currency: 'EUR',
+        unit: 'per_person',
+        vatRate: 0.10,
+        url: 'https://www.sncf-connect.com/en-en/train/route/paris/moutiers',
+        note: 'Paris–Moûtiers TGV from ~€50 each way booked early; winter Saturday Eurostar Ski Train alternatives exist. Add Altibus in the transfer component or ride the same coach as the group.',
+      },
+      {
+        id: 'car-eu',
+        name: 'Own car from Europe',
+        tier: 'From Europe',
+        description:
+          'Drives themselves to the resort — Val Thorens has paid covered parking (P0–P5, book ahead in winter). No package cost; fuel and tolls are their own.',
+        price: 0,
+        currency: 'EUR',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.valthorens.com/en/access/',
+        note: 'Zero package cost. Resort parking ~€90–140/week covered — travelers book directly. Snow tires/chains legally required (Loi Montagne).',
       },
     ],
   },

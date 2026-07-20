@@ -1,0 +1,445 @@
+// Jackson Hole Mountain Resort, Teton Village, Wyoming — North-American resort.
+// Shape mirrors val-thorens.ts (see resorts/types.ts for the schema;
+// resorts/shared.ts for US_INSURANCE). Prices USD; researched winter 2025/26.
+
+import type { Resort, SnowMonth } from './types';
+import type { TripComponent } from '../tripBuilderData';
+import { usWeeks } from '../seasonData';
+import { US_INSURANCE } from './shared';
+
+const components: TripComponent[] = [
+  {
+    id: 'flights',
+    label: 'Getting there',
+    icon: '✈️',
+    defaultEnabled: true,
+    defaultOptionId: 'flight-den',
+    unitHint: 'Round trip per traveler — mixable per person',
+    options: [
+      {
+        id: 'flight-den',
+        name: 'JFK/EWR 1-stop economy via Denver',
+        tier: 'Budget',
+        description:
+          'New York → JAC connecting through Denver on United, ~7–8 h door to door. The most common East-Coast routing into Jackson.',
+        price: 520,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.google.com/travel/flights/flights-from-new-york-to-jackson.html',
+        note: 'JAC is a small regional airport served mainly via DEN and SLC; winter round-trips typically run $450–$800+ and sell out on holiday weeks. International air is VAT-exempt.',
+      },
+      {
+        id: 'flight-slc',
+        name: 'JFK 1-stop economy via Salt Lake City',
+        tier: 'Budget',
+        description:
+          'JFK → JAC via Salt Lake City on Delta — a reliable winter connection bank into Jackson Hole.',
+        price: 610,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.kayak.com/flights/JFK-JAC',
+        note: 'Winter band ~$500–$800 round trip; SLC bank has the most frequency.',
+      },
+      {
+        id: 'flight-premium',
+        name: 'Premium economy 1-stop via Denver',
+        tier: 'Premium',
+        description:
+          'Extra-legroom / premium-economy itinerary via Denver — the comfortable choice for a peak-week arrival into the small JAC terminal.',
+        price: 780,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.google.com/travel/flights/flights-from-new-york-to-jackson.html',
+        note: 'Winter premium band $700–$1,100 round trip.',
+      },
+    ],
+  },
+  {
+    id: 'hotel',
+    label: 'Accommodation — 7 nights',
+    icon: '🏨',
+    defaultEnabled: true,
+    defaultOptionId: 'hotel-terra',
+    unitHint: 'Room only unless noted',
+    options: [
+      {
+        id: 'hotel-hostel',
+        lat: 43.5872,
+        lon: -110.8262,
+        name: 'The Hostel — Teton Village',
+        tier: 'Hostel',
+        description:
+          'Iconic no-frills lodge at the base of Teton Village, walking distance to the Aerial Tram — the cheapest slopeside beds in Jackson Hole.',
+        price: 175,
+        currency: 'USD',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0,
+        url: 'https://www.thehostel.us',
+        contact: 'info@thehostel.us · +1 307 733 3415',
+        imageUrl: 'https://www.thehostel.us/wp-content/uploads/2019/09/the-hostel-teton-village-exterior.jpg',
+        note: 'Private rooms from ~$175/night winter; bunk options lower. Add ~8% Wyoming sales + Teton County lodging tax. Wyoming has no state income tax.',
+      },
+      {
+        id: 'hotel-anvil',
+        lat: 43.4790,
+        lon: -110.7625,
+        name: 'The Anvil Hotel — downtown Jackson',
+        tier: 'Budget',
+        description:
+          'Renovated western-chic hotel on the town square in downtown Jackson, ~20 min shuttle to Teton Village.',
+        price: 195,
+        currency: 'USD',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0,
+        url: 'https://www.anvilhotel.com',
+        contact: 'stay@anvilhotel.com · +1 307 733 3668',
+        imageUrl: 'https://www.anvilhotel.com/wp-content/uploads/2018/06/anvil-hotel-jackson-hole-exterior.jpg',
+        note: 'Winter ~$175–$260/night. Add ~8% sales + lodging tax. In town, not slopeside — pair with the START Village bus.',
+      },
+      {
+        id: 'hotel-snowking',
+        lat: 43.4744,
+        lon: -110.7566,
+        name: 'Snow King Resort Hotel — Jackson',
+        tier: 'Mid',
+        description:
+          'Full-service resort hotel at the foot of Snow King in Jackson town, with pool and spa; shuttle distance to Jackson Hole Mountain Resort.',
+        price: 260,
+        currency: 'USD',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0,
+        url: 'https://www.snowking.com',
+        contact: '+1 307 733 5200',
+        imageUrl: 'https://www.snowking.com/wp-content/uploads/2020/10/snow-king-resort-exterior.jpg',
+        note: 'Winter ~$220–$320/night. Add ~8% sales + lodging tax.',
+      },
+      {
+        id: 'hotel-terra',
+        lat: 43.5877,
+        lon: -110.8280,
+        name: 'Hotel Terra Jackson Hole ★★★★',
+        tier: 'Premium',
+        description:
+          'Eco-luxury boutique hotel steps from the Aerial Tram in Teton Village, with a rooftop pool and spa — ski-in/ski-out convenience.',
+        price: 550,
+        currency: 'USD',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0,
+        url: 'https://www.hotelterrajacksonhole.com',
+        contact: 'reservations +1 855 318 8707 · +1 307 201 6065',
+        imageUrl: 'https://admin.hotelterrajacksonhole.com/content/uploads/2026/06/Hotel-Terra-Jackson-Hole-Summer-Exterior-with-Aerial-Tram.jpg',
+        note: 'Winter ~$450–$700/night; 3335 West Village Drive, Teton Village. Add ~8% sales + lodging tax.',
+      },
+      {
+        id: 'hotel-snakeriver',
+        lat: 43.5866,
+        lon: -110.8272,
+        name: 'Snake River Lodge & Spa ★★★★',
+        tier: 'Luxury',
+        description:
+          'Slopeside Teton Village lodge with a renowned five-story spa and grotto pool at the mountain base.',
+        price: 600,
+        currency: 'USD',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0,
+        url: 'https://www.snakeriverlodge.com',
+        contact: '+1 307 732 6000 · 7710 Granite Loop Rd, Teton Village',
+        imageUrl: 'https://www.snakeriverlodge.com/wp-content/uploads/2021/09/snake-river-lodge-spa-exterior.jpg',
+        note: 'Winter ~$500–$800/night. Add ~8% sales + lodging tax.',
+      },
+      {
+        id: 'hotel-fourseasons',
+        lat: 43.5896,
+        lon: -110.8256,
+        name: 'Four Seasons Resort Jackson Hole ★★★★★',
+        tier: 'Luxury',
+        description:
+          'Flagship ski-in/ski-out five-star resort in Teton Village with ski concierge, heated pool and Grand Teton views.',
+        price: 1250,
+        currency: 'USD',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0,
+        url: 'https://www.fourseasons.com/jacksonhole/',
+        contact: '+1 307 732 5000 · 7680 Granite Loop Rd, Teton Village',
+        imageUrl: 'https://www.fourseasons.com/alt/img-opt/~90.1544.0,0000-0,0000,3000,2000-2000,1333/publish/content/dam/fourseasons/images/web/JAC/JAC_1220_original.jpg',
+        note: 'Winter rooms ~$680 shoulder to $1,900+ peak; $1,250 is a mid-winter planning figure. Add ~8% sales + lodging tax.',
+      },
+    ],
+  },
+  {
+    id: 'transfer',
+    label: 'Airport transfer JAC ⇄ resort',
+    icon: '🚐',
+    defaultEnabled: true,
+    defaultOptionId: 'transfer-alltrans',
+    unitHint: 'JAC is only ~20–25 min from Teton Village',
+    options: [
+      {
+        id: 'transfer-start',
+        name: 'START Bus public transit (Village line)',
+        tier: 'Budget',
+        description:
+          'Southern Teton Area Rapid Transit runs the Jackson ⇄ Teton Village commuter line all winter — the cheapest way up to the slopes.',
+        price: 6,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.jacksonwy.gov/220/START-Bus',
+        contact: 'START Bus +1 307 733 4521',
+        note: '~$3/ride each way; does not serve the airport directly — combine with a taxi from JAC. Village line runs frequently in ski season.',
+      },
+      {
+        id: 'transfer-alltrans',
+        name: 'Alltrans / Mountain States Express shared shuttle',
+        tier: 'Budget',
+        description:
+          'Scheduled shared shuttle JAC → Teton Village / Jackson hotels; the standard airport ride when you are not on a hotel courtesy van.',
+        price: 80,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.jacksonholealltrans.com',
+        contact: '+1 307 733 3135',
+        note: '~$40/person each way. Many Teton Village luxury hotels include or arrange complimentary airport shuttles — check first.',
+      },
+      {
+        id: 'transfer-suv',
+        name: 'Private SUV transfer (Alltrans)',
+        tier: 'Mid',
+        description:
+          'Door-to-door private 4WD SUV JAC ⇄ Teton Village for the group, ~20–25 min each way with ski-gear space.',
+        price: 180,
+        currency: 'USD',
+        unit: 'per_vehicle_return',
+        capacity: 5,
+        vatRate: 0,
+        url: 'https://www.jacksonholealltrans.com',
+        contact: '+1 307 733 3135',
+        note: '~$90/vehicle each way. Planning figure per SUV return.',
+      },
+      {
+        id: 'transfer-luxsuv',
+        name: 'Private luxury SUV (Teton Mountain Transportation)',
+        tier: 'Premium',
+        description:
+          'Premium chauffeured SUV / Suburban for the group with meet-and-greet in the JAC terminal — the any-flight, any-time option.',
+        price: 260,
+        currency: 'USD',
+        unit: 'per_vehicle_return',
+        capacity: 6,
+        vatRate: 0,
+        url: 'https://www.jhtransportation.com',
+        contact: 'Teton Mountain Transportation',
+        note: '~$130/vehicle each way. Quote-based; planning figure per SUV return.',
+      },
+    ],
+  },
+  {
+    id: 'skipass',
+    label: 'Ski pass — 6 days Jackson Hole',
+    icon: '🎿',
+    defaultEnabled: true,
+    defaultOptionId: 'pass-flex',
+    unitHint: '2,500+ acres, 4,139 ft vertical',
+    options: [
+      {
+        id: 'pass-flex',
+        name: 'Flex "any-5-days" ticket (2025/26)',
+        description:
+          'Jackson Hole sells multi-day Flex tickets rather than a flat 6-day pass — an any-5-days Flex is the value play for a week on the mountain.',
+        price: 799,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.jacksonhole.com/lift-tickets',
+        contact: 'Jackson Hole Mountain Resort +1 307 733 2292',
+        imageUrl: 'https://www.jacksonhole.com/sites/default/files/2021-08/aerial-tram-jackson-hole.jpg',
+        note: 'Window/walk-up single-day tickets are very expensive ($200+, peak holidays ~$242–$270); buy online 7+ days ahead for up to ~45% off. Six individual window days run far higher than the Flex.',
+      },
+      {
+        id: 'pass-ikon',
+        name: 'Ikon Pass (season pass, multi-resort)',
+        description:
+          'Jackson Hole is a full Ikon partner: 7 days on the Ikon Pass / 5 days on Ikon Base. For 5+ days plus other Ikon resorts this beats window tickets. Reservations required in 2025/26.',
+        price: 1329,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.ikonpass.com',
+        note: 'Season-pass price; only worthwhile if skiing multiple weeks or resorts. Confirm the reservation window before travel.',
+      },
+    ],
+  },
+  {
+    id: 'rental',
+    label: 'Ski / snowboard rental — 6 days',
+    icon: '🏂',
+    defaultEnabled: false,
+    defaultOptionId: 'rental-tetonvillage',
+    unitHint: 'Skis + boots + poles',
+    options: [
+      {
+        id: 'rental-christy',
+        name: 'Christy Sports — Teton Village',
+        tier: 'Budget',
+        description:
+          'Slopeside shop at the base of the tram; sport and performance 6-day packages with advance-booking discounts.',
+        price: 240,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.christysports.com',
+        note: 'Sport ~$240 / Performance ~$330 for 6 days; book online ahead to save. Add Wyoming sales tax at checkout.',
+      },
+      {
+        id: 'rental-tetonvillage',
+        name: 'Teton Village Sports performance pack',
+        tier: 'Mid',
+        description:
+          'Right in Teton Village with slopeside pickup and mid-week swaps — mid/high-performance skis or board plus boots.',
+        price: 320,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.tetonvillagesports.com',
+        contact: '+1 307 733 2181',
+        note: '~$300–$360 for a 6-day performance package. Add Wyoming sales tax.',
+      },
+      {
+        id: 'rental-hoback',
+        name: 'Hoback Sports (downtown Jackson)',
+        tier: 'Budget',
+        description:
+          'Long-standing local shop in downtown Jackson — pick up in town before heading to the Village.',
+        price: 220,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.hobacksports.com',
+        contact: '+1 307 733 5335',
+        note: 'Sport ~$220 / Performance ~$300 for 6 days. Add Wyoming sales tax.',
+      },
+    ],
+  },
+  {
+    id: 'insurance',
+    label: 'Insurance',
+    icon: '🛡️',
+    defaultEnabled: true,
+    defaultOptionId: 'ins-us-policy',
+    unitHint: 'Medical + cancellation + evacuation',
+    options: [...US_INSURANCE],
+  },
+  {
+    id: 'skischool',
+    label: 'Ski school (optional)',
+    icon: '🎓',
+    defaultEnabled: false,
+    defaultOptionId: 'jhss-group',
+    unitHint: 'Jackson Hole Mountain Sports School',
+    options: [
+      {
+        id: 'jhss-group',
+        name: 'Mountain Sports School group lesson — full day',
+        description:
+          'Full-day adult group clinic (all levels) with the resort Mountain Sports School; lift ticket and rentals not included.',
+        price: 260,
+        currency: 'USD',
+        unit: 'per_person_day',
+        vatRate: 0,
+        url: 'https://www.jacksonhole.com/mountain-sports-school',
+        contact: '+1 307 733 2292 · +1 888 333 7766',
+        imageUrl: 'https://www.jacksonhole.com/sites/default/files/2021-08/aerial-tram-jackson-hole.jpg',
+        note: '~$260/day. Group sizes vary by level; book ahead on holiday weeks.',
+      },
+      {
+        id: 'jhss-private',
+        name: 'Mountain Sports School private — full day (1–5)',
+        tier: 'Premium',
+        description:
+          'Private instructor for your group for a full day (1–5 guests, one price), with line-priority perks; lift tickets extra.',
+        price: 1000,
+        currency: 'USD',
+        unit: 'per_group',
+        vatRate: 0,
+        url: 'https://www.jacksonhole.com/mountain-sports-school',
+        contact: '+1 307 733 2292 · +1 888 333 7766',
+        note: 'Full day ~$900–$1,050; half day ~$650. Confirm slot in the resort engine.',
+      },
+    ],
+  },
+];
+
+// Operational playbook shown on the page and in the internal PDF.
+const logistics = [
+  {
+    step: 'T-5 to T-3 months — lock the frame',
+    detail:
+      'Jackson Hole runs on flexible dates (no Saturday changeover), so target quiet January or April weeks and avoid Thanksgiving, Christmas/NY and Presidents\' week. Book JAC flights early — the airport is small and holiday banks via DEN/SLC sell out. Request the hotel allotment with a deposit; Teton Village slopeside beds (Hotel Terra, Snake River Lodge, Four Seasons) are limited.',
+  },
+  {
+    step: 'T-2 months — passes & transfer',
+    detail:
+      'Decide passes: for a single 6-day trip the Flex "any-5-days" ticket ($799) usually beats six window days; only buy the Ikon Pass if skiing multiple weeks or resorts. Buy lift tickets online 7+ days ahead for the discount. Reserve Alltrans shared shuttle or a private SUV matched to flight times, or confirm a hotel courtesy shuttle.',
+  },
+  {
+    step: 'T-1 month — paper & money',
+    detail:
+      'Collect the rooming list and rental sizes. Issue US travel insurance per traveler (World Nomads / Travelex / IMG). Pay hotel balances. Send suppliers flight numbers for airport pickup; confirm Mountain Sports School group levels and languages.',
+  },
+  {
+    step: 'Trip week — run of show',
+    detail:
+      'Fly into JAC → ~25 min transfer to Teton Village → check-in, collect Flex tickets, rental fitting → ski the tram, Rendezvous Bowl and Corbet\'s across 6 days → transfer back to JAC for the flight home. Reservations required for Ikon passholders — book mountain-access days in advance.',
+  },
+  {
+    step: 'Taxes & compliance',
+    detail:
+      'Wyoming has no state income tax; lodging carries ~8% (6% Wyoming/Teton County sales tax + 2% Teton County lodging tax) added at checkout. Lift tickets and rentals carry Wyoming sales tax; there is no VAT. Selling packaged trips to US consumers may require Seller of Travel registration (CA/FL/WA/HI).',
+  },
+];
+
+const JH_SNOW: SnowMonth[] = [
+  { month: 'Nov', snowfall: 76, base: 25, top: 60 },
+  { month: 'Dec', snowfall: 190, base: 90, top: 135 },
+  { month: 'Jan', snowfall: 216, base: 140, top: 205 },
+  { month: 'Feb', snowfall: 178, base: 160, top: 235 },
+  { month: 'Mar', snowfall: 165, base: 170, top: 255 },
+  { month: 'Apr', snowfall: 76, base: 130, top: 215 },
+];
+
+export const jacksonHole: Resort = {
+  id: 'jackson-hole',
+  name: 'Jackson Hole',
+  country: 'United States',
+  flag: '\u{1F1FA}\u{1F1F8}',
+  area: 'Wyoming',
+  blurb:
+    'Legendary big-mountain resort in Teton Village, Wyoming — a 4,139 ft vertical drop, steep expert terrain and deep Teton powder beneath the iconic Aerial Tram.',
+  lat: 43.5875,
+  lon: -110.8279,
+  elevationM: 1924,
+  currency: 'USD',
+  gatewayAirports: ['JAC'],
+  defaultOrigin: 'JFK',
+  mapsName: 'Teton Village Jackson Hole',
+  saturdayChangeover: false,
+  season: { open: '2026-11-27', close: '2027-04-11' },
+  weeks: usWeeks,
+  snowByMonth: JH_SNOW,
+  snowFacts:
+    'Base 6,311 ft (1,924 m), summit 10,450 ft (3,185 m), 4,139 ft vertical. Averages ~458 in (≈1,164 cm) of snow a season; famed for steep in-bounds terrain and reliable mid-winter powder.',
+  components,
+  logistics,
+};
+
+export default jacksonHole;

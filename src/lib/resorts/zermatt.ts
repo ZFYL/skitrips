@@ -1,0 +1,491 @@
+// Zermatt, Switzerland — Matterhorn Ski Paradise. Shaped like val-thorens.ts
+// (see resorts/types.ts for the schema; resorts/shared.ts for US_INSURANCE).
+// Zermatt is car-free — vehicles stop at Täsch and the final leg is the shuttle
+// train. Swiss lodging VAT special rate 3.8%, standard rate 8.1%.
+
+import type { Resort, SnowMonth } from './types';
+import type { TripComponent } from '../tripBuilderData';
+import { alpineWeeks } from '../seasonData';
+import { US_INSURANCE } from './shared';
+
+const components: TripComponent[] = [
+  {
+    id: 'flights',
+    label: 'Getting there',
+    icon: '✈️',
+    defaultEnabled: true,
+    defaultOptionId: 'flight-zrh',
+    unitHint: 'Round trip per traveler — mixable per person',
+    options: [
+      {
+        id: 'flight-zrh',
+        name: 'JFK → Zurich (SWISS / Delta / United)',
+        tier: 'Budget',
+        description:
+          'JFK → ZRH, mostly nonstop (~8 h), then rail via Visp into car-free Zermatt. Zurich has the most nonstop options.',
+        price: 820,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.google.com/travel/flights/flights-from-new-york-to-zurich.html',
+        note: 'Estimated winter band $650–$1,050 round trip; peak holiday weeks up to ~$1,400. International air is VAT-exempt.',
+      },
+      {
+        id: 'flight-gva',
+        name: 'JFK → Geneva (1-stop)',
+        tier: 'Budget',
+        description:
+          'JFK → GVA via a European hub; Geneva is marginally closer to Zermatt by rail. No year-round nonstop.',
+        price: 800,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.google.com/travel/flights/flights-from-new-york-to-geneva.html',
+        note: 'Estimated $650–$1,050 round trip winter, 1-stop via LHR/CDG/AMS/FRA.',
+      },
+      {
+        id: 'flight-ewr',
+        name: 'EWR → Zurich nonstop (United)',
+        tier: 'Premium',
+        description: 'Newark → ZRH daily United nonstop — the comfortable Saturday-changeover choice.',
+        price: 900,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.kayak.com/flight-routes/Newark-EWR/Zurich-ZRH',
+        note: 'Estimated $600–$1,000 round trip; peak up to ~$1,350.',
+      },
+      {
+        id: 'flight-bos',
+        name: 'BOS → Zurich (SWISS seasonal nonstop / 1-stop)',
+        tier: 'Budget',
+        description: 'Boston → ZRH on SWISS seasonal nonstop or 1-stop connections.',
+        price: 880,
+        currency: 'USD',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.momondo.com/flights/boston/zurich',
+        note: 'Estimated $700–$1,150 round trip winter; peak up to ~$1,450.',
+      },
+    ],
+  },
+  {
+    id: 'hotel',
+    label: 'Accommodation — 7 nights',
+    icon: '🏨',
+    defaultEnabled: true,
+    defaultOptionId: 'hotel-backstage',
+    unitHint: 'Breakfast unless noted',
+    options: [
+      {
+        id: 'hotel-bahnhof',
+        lat: 46.0244,
+        lon: 7.7488,
+        name: 'Hotel Bahnhof (guesthouse)',
+        tier: 'Budget',
+        description:
+          'Family-run since 1902, right by the station: private rooms and dorm beds, guest kitchen, no breakfast — the central budget base in a prestige resort.',
+        price: 100,
+        currency: 'CHF',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0.038,
+        url: 'https://hotelbahnhofzermatt.com',
+        contact: 'welcome@hotelbahnhofzermatt.com · +41 27 967 24 06',
+        imageUrl:
+          'https://hotelbahnhofzermatt.com/wp-content/uploads/2024/01/Home-bahnhof-zermatt-hotel-bg-full-scaled.jpg',
+        note: 'From ~CHF 80–120/room/night (dorm bed from ~CHF 45 pp). Guest kitchen, no breakfast.',
+      },
+      {
+        id: 'hotel-backstage',
+        lat: 46.022,
+        lon: 7.7478,
+        name: 'Backstage Hotel Zermatt ★★★★S',
+        tier: 'Mid',
+        description:
+          'Central 19-room design boutique with luxury chalets/apartments, spa, cinema and two restaurants.',
+        price: 375,
+        currency: 'CHF',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0.038,
+        url: 'https://www.backstagehotel.ch/en',
+        contact: 'info@backstagehotel.ch · +41 27 966 69 70',
+        imageUrl: 'https://www.backstagehotel.ch/public/img/social.jpg',
+        note: 'From ~CHF 375/room/night, rising to CHF 600+ at peak.',
+      },
+      {
+        id: 'hotel-riffelalp',
+        lat: 46.0019,
+        lon: 7.7509,
+        name: 'Riffelalp Resort 2222m ★★★★★',
+        tier: 'Premium',
+        description:
+          "Europe's highest hotel — ski-in/ski-out on the Gornergrat cog railway at 2,222 m with an outdoor pool facing the Matterhorn; breakfast included.",
+        price: 480,
+        currency: 'CHF',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0.038,
+        url: 'https://www.riffelalp.com/en',
+        contact: 'reservation@riffelalp.com · +41 27 966 05 55',
+        imageUrl:
+          'https://www.riffelalp.com/fileadmin/_processed_/a/1/csm_MP2_7227_33673fd54a.jpg',
+        note: 'From CHF 480/room/night; half-board packages from ~CHF 760. Reached by the Gornergrat railway (no road).',
+      },
+      {
+        id: 'hotel-cervo',
+        lat: 46.02186,
+        lon: 7.75442,
+        name: 'CERVO Mountain Resort ★★★★★',
+        tier: 'Luxury',
+        description:
+          'Chalet-style suites at the foot of the Sunnegga funicular — acclaimed dining and an Onsen spa; a design-forward luxury base.',
+        price: 600,
+        currency: 'CHF',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0.038,
+        url: 'https://cervo.swiss/en',
+        contact: 'beyond@cervo.swiss · +41 27 968 12 12',
+        imageUrl: 'https://cervo.swiss/media/site/402f72d3f7-1607680309/medien-04-1600x900.jpg',
+        note: 'From ~CHF 500–700/room/night; peak higher.',
+      },
+      {
+        id: 'hotel-zermatterhof',
+        lat: 46.0201,
+        lon: 7.7468,
+        name: 'Grand Hotel Zermatterhof ★★★★★',
+        tier: 'Prestige',
+        description:
+          'Swiss Deluxe grande dame on Bahnhofstrasse — spa, multiple restaurants and the hotel’s own horse-drawn carriages.',
+        price: 640,
+        currency: 'CHF',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0.038,
+        url: 'https://www.zermatterhof.ch',
+        contact: 'info@zermatterhof.ch · +41 27 966 66 00',
+        imageUrl: 'https://www.zermatterhof.ch/wp-content/uploads/2022/02/hotel-with-plaza.jpg',
+        note: 'From ~CHF 395/room/night; typical winter ~CHF 640+, suites much higher.',
+      },
+      {
+        id: 'hotel-montcervin',
+        lat: 46.0211,
+        lon: 7.7471,
+        name: 'Mont Cervin Palace ★★★★★',
+        tier: 'Prestige',
+        description:
+          'The Seiler flagship since 1852 (Leading Hotels of the World) — a 1,700 m² spa with indoor/outdoor pools, in the heart of the village near the station.',
+        price: 700,
+        currency: 'CHF',
+        unit: 'per_room_night',
+        capacity: 2,
+        vatRate: 0.038,
+        url: 'https://www.montcervinpalace.ch/en',
+        contact: 'reservations@montcervinpalace.ch · +41 27 966 88 88',
+        imageUrl:
+          'https://www.montcervinpalace.ch/wp-content/uploads/2023/11/winter_mcp-exterior-6-1.jpg',
+        note: 'From ~CHF 450–700/room/night; peak and suites higher.',
+      },
+    ],
+  },
+  {
+    id: 'transfer',
+    label: 'Airport transfer ⇄ car-free Zermatt',
+    icon: '🚐',
+    defaultEnabled: true,
+    defaultOptionId: 'transfer-train-full',
+    unitHint: 'Cars stop at Täsch — final leg is the shuttle train',
+    options: [
+      {
+        id: 'transfer-taesch-shuttle',
+        name: 'Täsch ⇄ Zermatt shuttle train (mandatory)',
+        tier: 'Budget',
+        description:
+          'The Zermatt Shuttle (Matterhorn Gotthard Bahn), ~12 min every 20 min. Zermatt is car-free, so every road arrival transfers to this train at the Täsch terminal.',
+        price: 17.2,
+        currency: 'CHF',
+        unit: 'per_person',
+        vatRate: 0.081,
+        url: 'https://www.matterhorngotthardbahn.ch/en/products/zermatt-shuttle',
+        contact: 'MGBahn +41 27 927 77 00',
+        note: '2026 tariff: from CHF 8.60 one-way / CHF 17.20 return pp (return valid 30 days). Swiss Travel Pass / Half-Fare valid.',
+      },
+      {
+        id: 'transfer-train-full',
+        name: 'Airport → Zermatt by train (SBB via Visp)',
+        tier: 'Budget',
+        description:
+          'Direct rail into car-free Zermatt: SBB from Zurich or Geneva airport to Visp, then Matterhorn Gotthard Bahn straight into the village — no car, no Täsch change needed.',
+        price: 192,
+        currency: 'CHF',
+        unit: 'per_person',
+        vatRate: 0.081,
+        url: 'https://www.sbb.ch',
+        contact: 'SBB +41 848 44 66 88',
+        note: 'Estimated ZRH ~CHF 96 one-way (~3h20–3h40) / GVA ~CHF 88 one-way (~3h50–4h10) → ~CHF 176–192 return. Half-Fare/Travel Pass reduce this substantially.',
+      },
+      {
+        id: 'transfer-private-van',
+        name: 'Private van airport → Täsch (1–8 pax)',
+        tier: 'Premium',
+        description:
+          'Door-to-door private van from Geneva or Zurich to the Täsch terminal; group then takes the shuttle train or an electric taxi the last 5 km into Zermatt.',
+        price: 1300,
+        currency: 'CHF',
+        unit: 'per_vehicle_return',
+        capacity: 8,
+        vatRate: 0.081,
+        url: 'https://zermatt.swiss/en/plan-book/arrival',
+        contact: 'Booked via a licensed transfer operator; village-side electric taxis via Taxi Christophe / Taxi Schaller',
+        note: 'Estimated CHF 550–800/vehicle one-way airport → Täsch → ~CHF 1,300 return; vans cannot enter car-free Zermatt.',
+      },
+      {
+        id: 'transfer-heli',
+        name: 'Air Zermatt helicopter transfer',
+        tier: 'Premium',
+        description:
+          'Scenic helicopter transfer (e.g. Sion or Raron ⇄ Zermatt heliport) for up to ~4–5 passengers — the fastest, most spectacular arrival.',
+        price: 2200,
+        currency: 'CHF',
+        unit: 'per_vehicle_return',
+        capacity: 4,
+        vatRate: 0.081,
+        url: 'https://www.air-zermatt.ch',
+        contact: '+41 27 966 86 86',
+        note: 'Estimated CHF 1,500–3,000 per flight depending on route — quote-based.',
+      },
+    ],
+  },
+  {
+    id: 'skipass',
+    label: 'Ski pass — 6 days Matterhorn Ski Paradise',
+    icon: '🎿',
+    defaultEnabled: true,
+    defaultOptionId: 'pass-swiss',
+    unitHint: '~360 km incl. the Italian side; ski to 3,883 m',
+    options: [
+      {
+        id: 'pass-swiss',
+        name: '6-day adult Zermatt (Swiss side) pass (2026/27)',
+        description:
+          'The full Swiss-side Matterhorn Ski Paradise, up to the 3,883 m Matterhorn Glacier Paradise — the highest ski area in the Alps. Dynamic pricing; earliest/latest weeks cheapest.',
+        price: 460,
+        currency: 'CHF',
+        unit: 'per_person',
+        vatRate: 0.081,
+        url: 'https://www.matterhornparadise.ch/en/information/tickets-prices/ski-passes',
+        contact: 'Zermatt Bergbahnen +41 27 966 01 01 · info@matterhornparadise.ch',
+        imageUrl:
+          'https://www.matterhornparadise.ch/media/image/3f/2e/hero-skiing-matterhorn.jpg',
+        note: '6-day from CHF 384 (dynamic); Jan–Mar peak weeks estimated ~CHF 470–520. Swiss lift tickets carry 8.1% VAT.',
+      },
+      {
+        id: 'pass-international',
+        name: '6-day adult International pass (incl. Cervinia, Italy)',
+        description:
+          'Adds the Breuil-Cervinia and Valtournenche pistes on the Italian side — cross the border on skis over the Theodul Pass.',
+        price: 500,
+        currency: 'CHF',
+        unit: 'per_person',
+        vatRate: 0.081,
+        url: 'https://www.matterhornparadise.ch/en/information/tickets-prices/ski-passes',
+        contact: 'info@matterhornparadise.ch',
+        note: '6-day International from CHF 432 (dynamic); peak weeks higher.',
+      },
+    ],
+  },
+  {
+    id: 'rental',
+    label: 'Ski / snowboard rental — 6 days',
+    icon: '🏂',
+    defaultEnabled: false,
+    defaultOptionId: 'rental-bayard',
+    unitHint: 'Skis + boots + helmet',
+    options: [
+      {
+        id: 'rental-bayard',
+        name: 'Bayard Sport mid pack',
+        tier: 'Mid',
+        description:
+          'Long-established shop on Bahnhofstrasse; 6-day mid-range skis + boots + helmet, fitted in resort.',
+        price: 245,
+        currency: 'CHF',
+        unit: 'per_person',
+        vatRate: 0.081,
+        url: 'https://www.bayardzermatt.ch/en',
+        contact: 'info@bayardzermatt.ch · +41 27 966 49 60',
+        imageUrl:
+          'https://www.bayardzermatt.ch/writable/media/1677135804-Copy_of_Etage_0_-4.jpg',
+        note: 'Estimated CHF 210–280 for a 6-day mid pack; ~10% online discount typical.',
+      },
+      {
+        id: 'rental-julen',
+        name: 'Julen Sport (Intersport) pack',
+        tier: 'Premium',
+        description:
+          'Intersport-partner shop; 6-day performance-leaning skis + boots + helmet package.',
+        price: 260,
+        currency: 'CHF',
+        unit: 'per_person',
+        vatRate: 0.081,
+        url: 'https://www.julensport.ch',
+        contact: '+41 27 967 43 40',
+        note: 'Estimated CHF 220–290 for a 6-day mid/performance pack.',
+      },
+      {
+        id: 'rental-matterhorn',
+        name: 'Matterhorn Sport pack',
+        tier: 'Budget',
+        description: 'Central rental shop; 6-day adult ski + boots + helmet at the value end.',
+        price: 230,
+        currency: 'CHF',
+        unit: 'per_person',
+        vatRate: 0.081,
+        url: 'https://www.matterhornsport.ch',
+        note: 'Estimated CHF 200–270 for a 6-day pack.',
+      },
+    ],
+  },
+  {
+    id: 'insurance',
+    label: 'Insurance',
+    icon: '🛡️',
+    defaultEnabled: true,
+    defaultOptionId: 'ins-us-policy',
+    unitHint: 'Medical + cancellation + mountain rescue',
+    options: [
+      ...US_INSURANCE,
+      {
+        id: 'ins-rega',
+        name: 'REGA patronage (Swiss Air-Rescue) — 1 year',
+        tier: 'Add-on',
+        description:
+          'Swiss Air-Rescue patronage: Rega may waive helicopter rescue-mission costs for patrons when insurance does not cover them. A donation/goodwill scheme, not insurance — pair it with a travel-medical policy. Relevant here given Zermatt’s glacier terrain.',
+        price: 40,
+        currency: 'CHF',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.rega.ch/en/become-a-patron',
+        contact: 'Rega (from abroad) +41 44 654 32 22',
+        note: 'CHF 40/adult/year; partnership/family tier ~CHF 80. Switzerland has no Carré Neige equivalent.',
+      },
+    ],
+  },
+  {
+    id: 'skischool',
+    label: 'Ski school (optional)',
+    icon: '🎓',
+    defaultEnabled: false,
+    defaultOptionId: 'zermatters-group',
+    unitHint: 'English-speaking instructors',
+    options: [
+      {
+        id: 'zermatters-group',
+        name: 'Zermatters (Swiss Ski School) adult group — 6 mornings',
+        description:
+          'Swiss Ski School Zermatt adult group course over consecutive mornings, meeting on Bahnhofstrasse.',
+        price: 420,
+        currency: 'CHF',
+        unit: 'per_person',
+        vatRate: 0,
+        url: 'https://www.zermatters.ch/en',
+        contact: 'info@zermatters.ch · +41 27 966 24 66',
+        note: 'Estimated CHF 380–450 for a 6-morning adult group course.',
+      },
+      {
+        id: 'zermatters-private',
+        name: 'Zermatters private instructor — half day',
+        tier: 'Premium',
+        description:
+          'Private instructor for your group per half-day; full-day ~CHF 640–720. Lift pass not included.',
+        price: 420,
+        currency: 'CHF',
+        unit: 'per_group',
+        vatRate: 0,
+        url: 'https://www.zermatters.ch/en',
+        contact: 'info@zermatters.ch · +41 27 966 24 66',
+        note: 'Estimated CHF 380–450 half-day private; full-day CHF 640–720.',
+      },
+      {
+        id: 'europeansnowsport-private',
+        name: 'European Snowsport private — half day',
+        tier: 'Premium',
+        description:
+          'British-run, private-focused school; full-day privates include the electric taxi to the lifts.',
+        price: 435,
+        currency: 'CHF',
+        unit: 'per_group',
+        vatRate: 0,
+        url: 'https://www.europeansnowsport.com/zermatt',
+        contact: '+41 27 771 62 22',
+        note: 'Estimated CHF 400–470 half-day private; full-day CHF 600–700.',
+      },
+    ],
+  },
+];
+
+const logistics = [
+  {
+    step: 'T-6 to T-4 months — lock the frame',
+    detail:
+      'Fix a Saturday-to-Saturday week (Alpine changeover). Hold flights to Zurich (most nonstops) or Geneva. Remember Zermatt is car-free — every itinerary ends on the train, so plan the rail leg from the start. Request the hotel allotment: standard Swiss group terms are a deposit on confirmation and the balance ~30 days before arrival; negotiate the release date (60–90 days pre-arrival).',
+  },
+  {
+    step: 'T-3 months — passes & transfer',
+    detail:
+      'Buy 6-day Matterhorn Ski Paradise passes on matterhornparadise.ch (choose Swiss-side or International incl. Cervinia); pricing is dynamic so book early. Decide the arrival mode: SBB rail via Visp direct into Zermatt (simplest), or a private van to Täsch plus the shuttle train. Reserve any Air Zermatt heli transfer well ahead.',
+  },
+  {
+    step: 'T-1 month — paper & money',
+    detail:
+      'Collect the final rooming list and rental sizes (Bayard / Julen / Matterhorn Sport). Issue insurance (US policy per traveler; optional Rega patronage at CHF 40/adult/year — goodwill, not insurance — worth it for glacier terrain). Pay the hotel balance. Confirm Täsch shuttle timings and any village electric-taxi pickups; book Zermatters course groups.',
+  },
+  {
+    step: 'Trip week — run of show',
+    detail:
+      'Fly to ZRH/GVA → train via Visp → arrive in car-free Zermatt (or van to Täsch → shuttle train ~12 min) → electric taxi/e-bus or walk to the hotel → collect passes, rental fitting → ski Sun–Fri (glacier terrain skis reliably even in poor weeks) → Sat train down to the airport. Allow a comfortable margin for the Visp and Täsch connections with luggage and skis.',
+  },
+  {
+    step: 'Taxes & compliance',
+    detail:
+      'Swiss VAT in these prices: accommodation at the special 3.8% lodging rate; lift passes, transfers, rail, rental and most services at the 8.1% standard rate; ski tuition and insurance exempt; international flights zero-rated. A guest/visitor tax is charged per person per night on top of room rates — confirm with Zermatt Tourism. Selling packaged trips to US consumers may require Seller of Travel registration (CA/FL/WA/HI).',
+  },
+];
+
+const ZERMATT_SNOW: SnowMonth[] = [
+  { month: 'Nov', snowfall: 33, base: 22, top: 80 },
+  { month: 'Dec', snowfall: 53, base: 42, top: 130 },
+  { month: 'Jan', snowfall: 55, base: 62, top: 175 },
+  { month: 'Feb', snowfall: 53, base: 72, top: 205 },
+  { month: 'Mar', snowfall: 53, base: 82, top: 225 },
+  { month: 'Apr', snowfall: 38, base: 52, top: 220 },
+];
+
+export const zermatt: Resort = {
+  id: 'zermatt',
+  name: 'Zermatt',
+  country: 'Switzerland',
+  flag: '🇨🇭',
+  area: 'Matterhorn Ski Paradise',
+  blurb:
+    'Car-free Matterhorn village at 1,620 m with skiing to 3,883 m — the highest ski area in the Alps, glacier snow year-round and a linked crossing into Italy.',
+  lat: 46.0207,
+  lon: 7.7491,
+  elevationM: 1620,
+  currency: 'CHF',
+  gatewayAirports: ['GVA', 'ZRH'],
+  defaultOrigin: 'JFK',
+  mapsName: 'Zermatt',
+  saturdayChangeover: true,
+  season: { open: '2026-11-01', close: '2027-05-03', linkOpen: '2026-11-01', linkClose: '2027-05-03' },
+  weeks: alpineWeeks,
+  snowByMonth: ZERMATT_SNOW,
+  snowFacts:
+    'Village at 1,620 m, skiing to 3,883 m on the Theodul Glacier — the highest and among the most snow-sure areas in the Alps, with year-round glacier skiing. Much of the domain sits above 2,900 m.',
+  components,
+  logistics,
+};
+
+export default zermatt;

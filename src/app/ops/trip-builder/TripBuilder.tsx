@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import {
@@ -11,6 +11,10 @@ import {
   type TripComponent,
 } from '@/lib/tripBuilderData';
 import type { LiveFlightOffer, LiveHotelOffer, LiveResponse } from '@/lib/live/types';
+
+import SnowPanel from './SnowPanel';
+import WhenToGo from './WhenToGo';
+import { weekFor, BAND_LABEL } from '@/lib/seasonData';
 
 // Leaflet touches `window` — client-only chunk.
 const HotelMap = dynamic(() => import('./HotelMap'), {
@@ -454,10 +458,124 @@ export default function TripBuilder() {
   const [clientName, setClientName] = useState('');
   const [offerTitle, setOfferTitle] = useState('Val Thorens Ski Week — Les 3 Vallées');
   const [includeInternal, setIncludeInternal] = useState(false);
+  const [tripStart, setTripStart] = useState('2027-01-16'); // Saturday changeover
+  const [personalNote, setPersonalNote] = useState('');
 
   const [showMap, setShowMap] = useState(true);
   const [galleries, setGalleries] = useState<Record<string, string[]>>({});
   const [galleryBusy, setGalleryBusy] = useState<Record<string, boolean>>({});
+
+  /* ---------- saved offers & share links ---------- */
+
+  interface OfferSnapshot {
+    v: 1;
+    savedAt: string;
+    offerTitle: string;
+    clientName: string;
+    travelers: Traveler[];
+    nights: number;
+    skiDays: number;
+    fx: number;
+    buffer: number;
+    profitPct: number;
+    config: Record<string, ComponentConfig>;
+    tripStart?: string;
+    personalNote?: string;
+  }
+
+  const OFFERS_KEY = 'bonvo.offers.v1';
+  const [offersOpen, setOffersOpen] = useState(false);
+  const [offerIndex, setOfferIndex] = useState<Record<string, OfferSnapshot>>({});
+  const [saveName, setSaveName] = useState('');
+  const [toast, setToast] = useState<string | null>(null);
+
+  const flash = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const snapshot = (): OfferSnapshot => ({
+    v: 1,
+    savedAt: new Date().toISOString(),
+    offerTitle,
+    clientName,
+    travelers,
+    nights,
+    skiDays,
+    fx,
+    buffer,
+    profitPct,
+    config,
+    tripStart,
+    personalNote,
+  });
+
+  const applySnapshot = (s: OfferSnapshot) => {
+    setOfferTitle(s.offerTitle);
+    setClientName(s.clientName);
+    setTravelers(s.travelers);
+    // Keep the id counter ahead of any restored traveler id (t<N> convention).
+    const maxId = Math.max(0, ...s.travelers.map((t) => parseInt(t.id.replace(/\D/g, ''), 10) || 0));
+    travelerIdRef.current = maxId + 1;
+    setNights(s.nights);
+    setSkiDays(s.skiDays);
+    setFx(s.fx);
+    setBuffer(s.buffer);
+    setProfitPct(s.profitPct);
+    if (s.tripStart) setTripStart(s.tripStart);
+    setPersonalNote(s.personalNote ?? '');
+    // Merge over defaults so snapshots survive future catalog additions.
+    setConfig((prev) => {
+      const next = { ...prev };
+      for (const [k, v] of Object.entries(s.config)) {
+        if (next[k]) next[k] = { ...next[k], ...v };
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(OFFERS_KEY);
+      if (raw) setOfferIndex(JSON.parse(raw));
+    } catch { /* corrupted store — start fresh */ }
+    // Hydrate from a share link (#o=<base64url payload>).
+    const m = /[#&]o=([A-Za-z0-9\-_]+)/.exec(window.location.hash);
+    if (m) {
+      try {
+        const json = decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/'))));
+        applySnapshot(JSON.parse(json) as OfferSnapshot);
+        flash('Offer loaded from link');
+      } catch { flash('Could not read the shared offer link'); }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const persistOffers = (next: Record<string, OfferSnapshot>) => {
+    setOfferIndex(next);
+    try { localStorage.setItem(OFFERS_KEY, JSON.stringify(next)); } catch { /* storage full */ }
+  };
+
+  const saveOffer = () => {
+    const name = (saveName || offerTitle || 'Untitled offer').trim();
+    persistOffers({ ...offerIndex, [name]: snapshot() });
+    setSaveName('');
+    flash(`Saved “${name}”`);
+  };
+
+  const copyShareLink = async () => {
+    const json = JSON.stringify(snapshot());
+    const b64 = btoa(unescape(encodeURIComponent(json)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const url = `${window.location.origin}${window.location.pathname}#o=${b64}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      flash('Share link copied — anyone with it sees this exact offer');
+    } catch {
+      window.location.hash = `o=${b64}`;
+      flash('Link set in the address bar — copy it from there');
+    }
+  };
 
   const pullPhotos = async (optionId: string, url: string) => {
     setGalleryBusy((p) => ({ ...p, [optionId]: true }));
@@ -706,6 +824,58 @@ export default function TripBuilder() {
     day: 'numeric',
   });
 
+  /* ---------- payment schedule (Crystal/WeSki-style: deposit + balance) ---------- */
+
+  const paySchedule = useMemo(() => {
+    const start = new Date(`${tripStart}T00:00:00`);
+    if (Number.isNaN(start.getTime()) || offeredTotal <= 0) return null;
+    const balanceDue = new Date(start);
+    balanceDue.setDate(balanceDue.getDate() - 30);
+    const deposit = Math.ceil((offeredTotal * 0.3) / 10) * 10;
+    const balance = offeredTotal - deposit;
+    const f = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return {
+      departure: f(start),
+      deposit,
+      depositPP: Math.ceil(deposit / people),
+      balance,
+      balancePP: Math.floor(balance / people),
+      balanceDue: f(balanceDue),
+    };
+  }, [tripStart, offeredTotal, people]);
+
+  /* ---------- validation warnings (Tourplan-style omission catcher) ---------- */
+
+  const warnings = useMemo(() => {
+    const out: string[] = [];
+    const allInStay =
+      !config.hotel?.split && ['hotel-ucpa', 'hotel-clubmed'].includes(config.hotel?.optionId ?? '');
+    if (allInStay && config.skipass?.enabled) {
+      out.push('The selected stay already includes the lift pass — disable Ski pass to avoid double-counting.');
+    }
+    if (config.hotel?.optionId === 'hotel-ucpa' && !config.hotel?.split && config.rental?.enabled) {
+      out.push('UCPA includes equipment — disable Rental to avoid double-counting.');
+    }
+    if (config.hotel?.optionId === 'hotel-clubmed' && !config.hotel?.split && config.skischool?.enabled) {
+      out.push('Club Med includes group lessons — Ski school may be double-counted.');
+    }
+    const day = new Date(`${tripStart}T00:00:00`).getDay();
+    if (day !== 6) {
+      out.push(`Trip start ${tripStart} is not a Saturday — Val Thorens hotels and Ben's Bus run on Saturday changeovers.`);
+    }
+    if (people >= 10) {
+      out.push("Group of 10+: request group rates (Ben's Bus from £80 return; SETAM group pass manifest).");
+    }
+    if (profitPct < 15) {
+      out.push(`Profit is set to ${profitPct}% — below the 15% floor for a sustainable offer.`);
+    }
+    const wk = weekFor(tripStart);
+    if (wk && (wk.band === 'peak' || wk.band === 'high')) {
+      out.push(`${BAND_LABEL[wk.band]} week (${wk.flags.join(', ') || 'holiday period'}) — supplier baselines run well above the catalog reference prices; quote up or raise the buffer.`);
+    }
+    return out;
+  }, [config, tripStart, people, profitPct]);
+
   return (
     <div className="min-h-screen bg-[#fbfbfd] text-[#1d1d1f]">
       {/* ======== SCREEN UI ======== */}
@@ -725,14 +895,87 @@ export default function TripBuilder() {
                 Scenario planner →
               </a>
             </div>
-            <button
-              onClick={() => window.print()}
-              className="rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-6 py-2.5 text-sm font-medium text-white shadow-[0_10px_24px_rgba(99,102,241,0.35)] transition-transform hover:-translate-y-0.5"
-            >
-              Export offer as PDF
-            </button>
+            <div className="relative flex items-center gap-3">
+              <button
+                onClick={() => setOffersOpen((v) => !v)}
+                className="rounded-full bg-black/5 px-5 py-2.5 text-sm font-medium text-[#1d1d1f] transition-colors hover:bg-black/10"
+              >
+                💾 Offers{Object.keys(offerIndex).length > 0 ? ` (${Object.keys(offerIndex).length})` : ''}
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-6 py-2.5 text-sm font-medium text-white shadow-[0_10px_24px_rgba(99,102,241,0.35)] transition-transform hover:-translate-y-0.5"
+              >
+                Export offer as PDF
+              </button>
+
+              {offersOpen && (
+                <div className="absolute right-0 top-14 z-50 w-96 rounded-2xl border border-black/10 bg-white p-5 shadow-[0_24px_60px_rgba(29,29,31,0.18)]">
+                  <p className="text-sm font-bold">Saved offers</p>
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      type="text"
+                      placeholder={offerTitle || 'Offer name'}
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      className="min-w-0 flex-1 rounded-xl border border-black/10 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                    />
+                    <button
+                      onClick={saveOffer}
+                      className="rounded-full bg-[#1d1d1f] px-4 py-2 text-sm font-medium text-white"
+                    >
+                      Save
+                    </button>
+                  </div>
+                  <button
+                    onClick={copyShareLink}
+                    className="mt-2 w-full rounded-full bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
+                  >
+                    🔗 Copy share link for current offer
+                  </button>
+                  <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto">
+                    {Object.entries(offerIndex)
+                      .sort((a, b) => (a[1].savedAt < b[1].savedAt ? 1 : -1))
+                      .map(([name, snap]) => (
+                        <li key={name} className="flex items-center justify-between gap-2 rounded-xl border border-black/5 px-3 py-2">
+                          <button
+                            onClick={() => { applySnapshot(snap); setOffersOpen(false); flash(`Loaded “${name}”`); }}
+                            className="min-w-0 flex-1 truncate text-left text-sm font-medium hover:text-indigo-600"
+                            title={`Saved ${new Date(snap.savedAt).toLocaleString()}`}
+                          >
+                            {name}
+                            <span className="block text-[11px] font-normal text-[#a1a1a6]">
+                              {snap.travelers.length} pax · {new Date(snap.savedAt).toLocaleDateString()}
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              const next = { ...offerIndex };
+                              delete next[name];
+                              persistOffers(next);
+                            }}
+                            aria-label={`Delete ${name}`}
+                            className="rounded-full px-2 py-1 text-xs text-[#a1a1a6] hover:bg-black/5 hover:text-red-500"
+                          >
+                            ✕
+                          </button>
+                        </li>
+                      ))}
+                    {Object.keys(offerIndex).length === 0 && (
+                      <li className="text-xs text-[#a1a1a6]">Nothing saved yet — offers live in this browser.</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
         </header>
+
+        {toast && (
+          <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#1d1d1f] px-5 py-2.5 text-sm text-white shadow-xl">
+            {toast}
+          </div>
+        )}
 
         <div className="mx-auto grid max-w-[1400px] gap-10 px-6 py-10 lg:grid-cols-[1fr_380px]">
           {/* -------- left column -------- */}
@@ -792,6 +1035,9 @@ export default function TripBuilder() {
                 + Add traveler
               </button>
             </details>
+
+            {/* When to go — researched season bands; picking a week sets departure */}
+            <WhenToGo selected={tripStart} onSelect={setTripStart} />
 
             {/* Components */}
             {components.map((component) => {
@@ -1197,6 +1443,16 @@ export default function TripBuilder() {
             <div className="neo-card p-7">
               <h2 className="text-lg font-bold tracking-tight">Offer summary</h2>
 
+              {warnings.length > 0 && (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  {warnings.map((w) => (
+                    <p key={w} className="flex gap-1.5 py-0.5 text-xs leading-snug text-amber-800">
+                      <span aria-hidden>⚠️</span> {w}
+                    </p>
+                  ))}
+                </div>
+              )}
+
               <div className="mt-4 flex flex-col gap-3">
                 <input
                   type="text"
@@ -1313,6 +1569,40 @@ export default function TripBuilder() {
                 </p>
               </div>
 
+              {/* Departure + payment schedule */}
+              <div className="mt-5 border-t border-black/5 pt-4">
+                <label className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wide text-[#6e6e73]">
+                  Departure (Saturday)
+                  <input
+                    type="date"
+                    value={tripStart}
+                    onChange={(e) => setTripStart(e.target.value)}
+                    className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-sm font-normal normal-case tracking-normal"
+                  />
+                </label>
+                {paySchedule && (
+                  <div className="mt-3 space-y-1.5 rounded-xl bg-black/[0.03] p-3 text-xs">
+                    <p className="flex justify-between">
+                      <span className="text-[#6e6e73]">Deposit (30%) — due on booking</span>
+                      <span className="font-semibold">{fmtUSD(paySchedule.deposit)} · {fmtUSD(paySchedule.depositPP)}/pp</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span className="text-[#6e6e73]">Balance — due {paySchedule.balanceDue}</span>
+                      <span className="font-semibold">{fmtUSD(paySchedule.balance)} · {fmtUSD(paySchedule.balancePP)}/pp</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Personal note (Ski.com practice: say why you built it this way) */}
+              <textarea
+                placeholder="Personal note to the client — why this trip is built this way (goes on the PDF)"
+                value={personalNote}
+                onChange={(e) => setPersonalNote(e.target.value)}
+                rows={3}
+                className="mt-4 w-full rounded-xl border border-black/10 px-3 py-2 text-xs leading-relaxed focus:border-sky-400 focus:outline-none"
+              />
+
               <label className="mt-4 flex cursor-pointer items-center gap-2 text-xs text-[#6e6e73]">
                 <input
                   type="checkbox"
@@ -1333,6 +1623,8 @@ export default function TripBuilder() {
                 Uses your browser&apos;s print dialog — choose &ldquo;Save as PDF&rdquo;.
               </p>
             </div>
+
+            <SnowPanel />
           </aside>
         </div>
       </div>
@@ -1349,6 +1641,7 @@ export default function TripBuilder() {
           <h1 className="mt-8 text-3xl font-bold tracking-tight">{offerTitle}</h1>
           {clientName && <p className="mt-1 text-base text-[#6e6e73]">Prepared for {clientName}</p>}
           <p className="mt-3 text-sm text-[#6e6e73]">
+            Departure week of {new Date(`${tripStart}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ·{' '}
             {people} traveler{people > 1 ? 's' : ''} · {nights} nights · {skiDays} ski days · Val
             Thorens, Les 3 Vallées, France
           </p>
@@ -1408,6 +1701,13 @@ export default function TripBuilder() {
             </div>
           )}
 
+          {personalNote.trim() && (
+            <div className="mt-8 rounded-xl bg-[#f5f5f7] p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#6e6e73]">A note from your trip designer</p>
+              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[#1d1d1f]">{personalNote}</p>
+            </div>
+          )}
+
           <div className="mt-8 rounded-xl border-2 border-[#1d1d1f] p-5">
             <p className="flex justify-between text-lg font-bold">
               <span>Price per person</span>
@@ -1417,6 +1717,18 @@ export default function TripBuilder() {
               <span>Total for {people} traveler{people > 1 ? 's' : ''}</span>
               <span>{fmtUSD(offeredTotal)}</span>
             </p>
+            {paySchedule && (
+              <div className="mt-3 border-t border-black/10 pt-3 text-sm text-[#494949]">
+                <p className="flex justify-between">
+                  <span>Deposit on booking (30%)</span>
+                  <span>{fmtUSD(paySchedule.deposit)} — {fmtUSD(paySchedule.depositPP)} per person</span>
+                </p>
+                <p className="mt-1 flex justify-between">
+                  <span>Balance due {paySchedule.balanceDue}</span>
+                  <span>{fmtUSD(paySchedule.balance)} — {fmtUSD(paySchedule.balancePP)} per person</span>
+                </p>
+              </div>
+            )}
             <p className="mt-2 text-xs text-[#6e6e73]">
               All listed components included. Price is all-in and VAT-inclusive where applicable;
               valid subject to availability at time of booking. Nothing is charged until you approve

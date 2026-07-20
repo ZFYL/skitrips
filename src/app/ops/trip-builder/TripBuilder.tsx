@@ -14,6 +14,8 @@ import type { LiveFlightOffer, LiveHotelOffer, LiveResponse } from '@/lib/live/t
 
 import SnowPanel from './SnowPanel';
 import WhenToGo from './WhenToGo';
+import PrintOffer from './PrintOffer';
+import type { OfferPrintData, PrintServiceGroup } from './printTypes';
 import { weekFor, BAND_LABEL } from '@/lib/seasonData';
 
 // Leaflet touches `window` — client-only chunk.
@@ -484,6 +486,7 @@ export default function TripBuilder() {
   }
 
   const OFFERS_KEY = 'bonvo.offers.v1';
+  const [printPreview, setPrintPreview] = useState(false);
   const [offersOpen, setOffersOpen] = useState(false);
   const [offerIndex, setOfferIndex] = useState<Record<string, OfferSnapshot>>({});
   const [saveName, setSaveName] = useState('');
@@ -539,6 +542,7 @@ export default function TripBuilder() {
       const raw = localStorage.getItem(OFFERS_KEY);
       if (raw) setOfferIndex(JSON.parse(raw));
     } catch { /* corrupted store — start fresh */ }
+    if (window.location.search.includes('printPreview')) setPrintPreview(true);
     // Hydrate from a share link (#o=<base64url payload>).
     const m = /[#&]o=([A-Za-z0-9\-_]+)/.exec(window.location.hash);
     if (m) {
@@ -876,10 +880,128 @@ export default function TripBuilder() {
     return out;
   }, [config, tripStart, people, profitPct]);
 
+  /* ---------- print data assembly (contract for PrintOffer sections) ---------- */
+
+  const printData: OfferPrintData = useMemo(() => {
+    const wk = weekFor(tripStart);
+    const groupsFor = (componentId: string): PrintServiceGroup[] => {
+      const cfg = config[componentId];
+      const component = components.find((c) => c.id === componentId);
+      if (!component || !cfg?.enabled) return [];
+      if (cfg.split) {
+        return splitGroups
+          .filter((g) => g.component.id === componentId)
+          .map((g) => {
+            const opt = component.options.find((o) => o.id === g.key);
+            return {
+              label: g.label,
+              memberNames: g.members.map((m) => m.name),
+              url: opt?.url,
+              contact: opt?.contact,
+            };
+          });
+      }
+      const opt = component.options.find((o) => o.id === cfg.optionId);
+      const label =
+        cfg.optionId === CUSTOM
+          ? cfg.customLabel || 'Custom arrangement'
+          : cfg.optionId === LIVE && cfg.live
+            ? cfg.live.label
+            : opt?.name ?? '';
+      return [{
+        label,
+        memberNames: travelers.map((t) => t.name),
+        url: opt?.url,
+        contact: opt?.contact,
+      }];
+    };
+
+    const componentGroups = components
+      .filter((c) => config[c.id]?.enabled)
+      .map((c) => ({
+        componentId: c.id,
+        componentLabel: c.label,
+        icon: c.icon,
+        groups: groupsFor(c.id),
+      }));
+
+    const hotelCfg = config.hotel;
+    const hotelOpt = hotelCfg?.enabled && !hotelCfg.split
+      ? components.find((c) => c.id === 'hotel')?.options.find((o) => o.id === hotelCfg.optionId)
+      : undefined;
+    const passOpt = config.skipass?.enabled
+      ? components.find((c) => c.id === 'skipass')?.options.find((o) => o.id === config.skipass.optionId)
+      : undefined;
+    const schoolOpt = config.skischool?.enabled
+      ? components.find((c) => c.id === 'skischool')?.options.find((o) => o.id === config.skischool.optionId)
+      : undefined;
+
+    return {
+      offerRef: `BV-${tripStart.replaceAll('-', '').slice(2)}-${people}P`,
+      validUntil: new Date(Date.now() + 14 * 86_400_000).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+      }),
+      todayStr: today,
+      offerTitle,
+      clientName,
+      personalNote,
+      tripStart,
+      nights,
+      skiDays,
+      people,
+      travelerNames: travelers.map((t) => t.name),
+      seasonNote: wk
+        ? `${BAND_LABEL[wk.band]}${wk.flags.length ? ` · ${wk.flags.join(', ')}` : ''}${wk.note ? ` — ${wk.note}` : ''}`
+        : undefined,
+      lines: lines.map((l) => ({
+        componentId: l.component.id,
+        componentLabel: l.component.label,
+        icon: l.component.icon,
+        label: l.label,
+        detail: l.detail,
+        totalUSD: l.totalUSD,
+        url: l.option?.url,
+        description: l.option?.description,
+      })),
+      componentGroups,
+      perTraveler: perTraveler.map((p) => ({
+        name: p.traveler.name,
+        totalUSD: p.total,
+        picks: p.picks,
+      })),
+      anySplit: splitComponents.length > 0,
+      pay: paySchedule,
+      perPersonFinal,
+      offeredTotal,
+      hotel: hotelOpt
+        ? { name: hotelOpt.name, url: hotelOpt.url, contact: hotelOpt.contact, lat: hotelOpt.lat, lon: hotelOpt.lon }
+        : undefined,
+      transferGroups: groupsFor('transfer'),
+      arrivalGroups: groupsFor('flights'),
+      skiSchool: schoolOpt ? { name: schoolOpt.name, url: schoolOpt.url } : undefined,
+      skiPass: passOpt ? { name: passOpt.name, url: passOpt.url } : undefined,
+      internal: {
+        realTotal,
+        vatTotal,
+        buffer,
+        bufferedTotal,
+        profitPct,
+        finalTotal,
+        profitAbs,
+        marginOnOffer,
+      },
+    };
+  }, [
+    tripStart, today, offerTitle, clientName, personalNote, nights, skiDays, people,
+    travelers, lines, splitGroups, splitComponents, perTraveler, paySchedule,
+    perPersonFinal, offeredTotal, config, realTotal, vatTotal, buffer, bufferedTotal,
+    profitPct, finalTotal, profitAbs, marginOnOffer,
+  ]);
+
   return (
     <div className="min-h-screen bg-[#fbfbfd] text-[#1d1d1f]">
       {/* ======== SCREEN UI ======== */}
-      <div className="print:hidden">
+      <div className={cn('print:hidden', printPreview && 'hidden')}>
         {/* Top bar */}
         <header className="sticky top-0 z-40 border-b border-black/5 bg-white/85 backdrop-blur-xl">
           <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-6">
@@ -1629,151 +1751,9 @@ export default function TripBuilder() {
         </div>
       </div>
 
-      {/* ======== PRINT / PDF VIEW ======== */}
-      <div className="hidden print:block">
-        <div className="mx-auto max-w-[720px] px-2 py-6 text-[#1d1d1f]">
-          {/* Client-facing offer */}
-          <div className="flex items-baseline justify-between border-b-2 border-[#1d1d1f] pb-4">
-            <p className="text-2xl font-bold tracking-tight">BONVO.SKI</p>
-            <p className="text-sm text-[#6e6e73]">Personal trip proposal · {today}</p>
-          </div>
-
-          <h1 className="mt-8 text-3xl font-bold tracking-tight">{offerTitle}</h1>
-          {clientName && <p className="mt-1 text-base text-[#6e6e73]">Prepared for {clientName}</p>}
-          <p className="mt-3 text-sm text-[#6e6e73]">
-            Departure week of {new Date(`${tripStart}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ·{' '}
-            {people} traveler{people > 1 ? 's' : ''} · {nights} nights · {skiDays} ski days · Val
-            Thorens, Les 3 Vallées, France
-          </p>
-
-          <table className="mt-8 w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-black/20 text-left">
-                <th className="py-2 pr-4 font-semibold">Included in your trip</th>
-                <th className="py-2 font-semibold">Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((l, i) => (
-                <tr key={`${l.component.id}-${i}`} className="border-b border-black/10 align-top">
-                  <td className="py-2.5 pr-4 font-medium">{l.component.icon} {l.component.label}</td>
-                  <td className="py-2.5 text-[#494949]">
-                    {l.label}
-                    {l.option?.description ? ` — ${l.option.description}` : ''}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Per-traveler service appendix (only when services are split) */}
-          {anySplit && (
-            <div className="mt-8">
-              <p className="text-sm font-semibold">Travelers &amp; services</p>
-              <table className="mt-2 w-full border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-black/20 text-left">
-                    <th className="py-1.5 pr-3 font-semibold">Traveler</th>
-                    {splitComponents.map((c) => (
-                      <th key={c.id} className="py-1.5 pr-3 font-semibold">
-                        {c.icon} {c.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {travelers.map((t) => (
-                    <tr key={t.id} className="border-b border-black/10">
-                      <td className="py-1.5 pr-3 font-medium">{t.name}</td>
-                      {splitComponents.map((c) => (
-                        <td key={c.id} className="py-1.5 pr-3 text-[#494949]">
-                          {assignmentTable[t.id]?.[c.id] ?? '—'}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="mt-1.5 text-[10px] text-[#6e6e73]">
-                &ldquo;Own&rdquo; = the traveler arranges this part themselves; it is not included
-                in the package price.
-              </p>
-            </div>
-          )}
-
-          {personalNote.trim() && (
-            <div className="mt-8 rounded-xl bg-[#f5f5f7] p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#6e6e73]">A note from your trip designer</p>
-              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[#1d1d1f]">{personalNote}</p>
-            </div>
-          )}
-
-          <div className="mt-8 rounded-xl border-2 border-[#1d1d1f] p-5">
-            <p className="flex justify-between text-lg font-bold">
-              <span>Price per person</span>
-              <span>{fmtUSD(perPersonFinal)}</span>
-            </p>
-            <p className="mt-1 flex justify-between text-sm text-[#494949]">
-              <span>Total for {people} traveler{people > 1 ? 's' : ''}</span>
-              <span>{fmtUSD(offeredTotal)}</span>
-            </p>
-            {paySchedule && (
-              <div className="mt-3 border-t border-black/10 pt-3 text-sm text-[#494949]">
-                <p className="flex justify-between">
-                  <span>Deposit on booking (30%)</span>
-                  <span>{fmtUSD(paySchedule.deposit)} — {fmtUSD(paySchedule.depositPP)} per person</span>
-                </p>
-                <p className="mt-1 flex justify-between">
-                  <span>Balance due {paySchedule.balanceDue}</span>
-                  <span>{fmtUSD(paySchedule.balance)} — {fmtUSD(paySchedule.balancePP)} per person</span>
-                </p>
-              </div>
-            )}
-            <p className="mt-2 text-xs text-[#6e6e73]">
-              All listed components included. Price is all-in and VAT-inclusive where applicable;
-              valid subject to availability at time of booking. Nothing is charged until you approve
-              the final itinerary.
-            </p>
-          </div>
-
-          <p className="mt-8 text-sm text-[#494949]">
-            To confirm or adjust this proposal, reply to your Bonvo contact or write to
-            hello@bonvo.ski. We answer within one business day.
-          </p>
-
-          {/* Internal cost sheet (optional) */}
-          {includeInternal && (
-            <div className="mt-10 border-t-2 border-dashed border-black/30 pt-6" style={{ breakBefore: 'page' }}>
-              <p className="text-lg font-bold">Internal cost sheet — do not send to client</p>
-              <table className="mt-4 w-full border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-black/20 text-left">
-                    <th className="py-1.5 pr-3 font-semibold">Component</th>
-                    <th className="py-1.5 pr-3 font-semibold">Supplier / basis</th>
-                    <th className="py-1.5 text-right font-semibold">Cost (USD)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((l, i) => (
-                    <tr key={`${l.component.id}-${i}`} className="border-b border-black/10">
-                      <td className="py-1.5 pr-3">{l.component.label}</td>
-                      <td className="py-1.5 pr-3">{l.label} · {l.detail}</td>
-                      <td className="py-1.5 text-right">{fmtUSD2(l.totalUSD)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="mt-3 space-y-1 text-xs">
-                <p className="flex justify-between"><span>Real cost total</span><span>{fmtUSD2(realTotal)}</span></p>
-                <p className="flex justify-between"><span>Included VAT (est.)</span><span>{fmtUSD2(vatTotal)}</span></p>
-                <p className="flex justify-between"><span>Buffer ×{buffer.toFixed(2)}</span><span>{fmtUSD2(bufferedTotal)}</span></p>
-                <p className="flex justify-between"><span>Profit {profitPct}%</span><span>{fmtUSD2(finalTotal)}</span></p>
-                <p className="flex justify-between font-semibold"><span>Offered (rounded)</span><span>{fmtUSD2(offeredTotal)}</span></p>
-                <p className="flex justify-between font-semibold"><span>Gross profit</span><span>{fmtUSD2(profitAbs)} · {marginOnOffer.toFixed(1)}% of offer</span></p>
-              </div>
-            </div>
-          )}
-        </div>
+      {/* ======== PRINT / PDF VIEW (?printPreview=1 shows it on screen) ======== */}
+      <div className={printPreview ? 'block bg-white' : 'hidden print:block'}>
+        <PrintOffer data={printData} includeInternal={includeInternal} />
       </div>
     </div>
   );

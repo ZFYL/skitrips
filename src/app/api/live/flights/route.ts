@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
         fetchedAt,
         error: e instanceof Error ? e.message : 'Amadeus call failed',
         note: 'Live call failed — showing researched reference fares (July 2026).',
-        offers: referenceFlights(adults),
+        offers: referenceFlights(origin, destination),
       };
       return NextResponse.json(body);
     }
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     fetchedAt,
     note:
       'No Amadeus credentials configured (free at developers.amadeus.com — set AMADEUS_CLIENT_ID / AMADEUS_CLIENT_SECRET). Showing researched reference fares.',
-    offers: referenceFlights(adults),
+    offers: referenceFlights(origin, destination),
   };
   return NextResponse.json(body);
 }

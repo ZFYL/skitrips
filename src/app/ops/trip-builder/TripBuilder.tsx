@@ -4,12 +4,15 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import {
-  components,
-  logistics,
   UNIT_LABEL,
+  curSymbol,
+  DEFAULT_FX,
   type SupplierOption,
   type TripComponent,
+  type Currency,
+  type FxRates,
 } from '@/lib/tripBuilderData';
+import { getResort, resortSummaries, DEFAULT_RESORT_ID } from '@/lib/resorts';
 import type { LiveFlightOffer, LiveHotelOffer, LiveResponse } from '@/lib/live/types';
 
 import SnowPanel from './SnowPanel';
@@ -17,6 +20,24 @@ import WhenToGo from './WhenToGo';
 import PrintOffer from './PrintOffer';
 import type { OfferPrintData, PrintServiceGroup } from './printTypes';
 import { weekFor, BAND_LABEL } from '@/lib/seasonData';
+
+// Build the default per-component config for a resort's catalog.
+function buildDefaultConfig(comps: TripComponent[]): Record<string, ComponentConfig> {
+  return Object.fromEntries(
+    comps.map((c) => [
+      c.id,
+      {
+        enabled: c.defaultEnabled,
+        optionId: c.defaultOptionId,
+        customLabel: '',
+        customPrice: '',
+        customBasis: 'per_person' as const,
+        split: false,
+        assignments: {} as Record<string, Assignment>,
+      },
+    ])
+  );
+}
 
 // Leaflet touches `window` — client-only chunk.
 const HotelMap = dynamic(() => import('./HotelMap'), {
@@ -197,14 +218,18 @@ function SourceBadge({ source }: { source: 'amadeus' | 'reference' }) {
 
 function LiveFlightPanel({
   people,
+  defaultOrigin,
+  destination,
   selectedId,
   onSelect,
 }: {
   people: number;
+  defaultOrigin: string;
+  destination: string;
   selectedId: string | null;
   onSelect: (offer: LiveFlightOffer, source: 'amadeus' | 'reference') => void;
 }) {
-  const [origin, setOrigin] = useState('JFK');
+  const [origin, setOrigin] = useState(defaultOrigin);
   const [depart, setDepart] = useState('2027-01-16');
   const [ret, setRet] = useState('2027-01-23');
   const [loading, setLoading] = useState(false);
@@ -217,7 +242,7 @@ function LiveFlightPanel({
     try {
       const qs = new URLSearchParams({
         origin,
-        destination: 'GVA',
+        destination,
         depart,
         return: ret,
         adults: String(people),
@@ -235,7 +260,7 @@ function LiveFlightPanel({
   return (
     <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50/60 p-5">
       <div className="flex flex-wrap items-end gap-3">
-        <p className="mr-auto text-sm font-semibold">✈️ Live fare search — NYC ⇄ Geneva</p>
+        <p className="mr-auto text-sm font-semibold">✈️ Live fare search → {destination}</p>
         <label className="flex flex-col gap-1 text-xs font-medium text-[#6e6e73]">
           Origin (IATA)
           <input value={origin} onChange={(e) => setOrigin(e.target.value.toUpperCase())} maxLength={3}
@@ -313,10 +338,16 @@ function LiveFlightPanel({
 
 function LiveHotelPanel({
   people,
+  resortName,
+  lat,
+  lon,
   selectedId,
   onSelect,
 }: {
   people: number;
+  resortName: string;
+  lat: number;
+  lon: number;
   selectedId: string | null;
   onSelect: (offer: LiveHotelOffer, source: 'amadeus' | 'reference') => void;
 }) {
@@ -330,7 +361,10 @@ function LiveHotelPanel({
     setLoading(true);
     setErr(null);
     try {
-      const qs = new URLSearchParams({ checkIn, checkOut, adults: String(people) });
+      const qs = new URLSearchParams({
+        checkIn, checkOut, adults: String(people),
+        lat: String(lat), lon: String(lon), name: resortName,
+      });
       const r = await fetch(`/api/live/hotels?${qs}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setResp(await r.json());
@@ -344,7 +378,7 @@ function LiveHotelPanel({
   return (
     <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/60 p-5">
       <div className="flex flex-wrap items-end gap-3">
-        <p className="mr-auto text-sm font-semibold">🛎️ Live availability — Val Thorens</p>
+        <p className="mr-auto text-sm font-semibold">🛎️ Live availability — {resortName}</p>
         <label className="flex flex-col gap-1 text-xs font-medium text-[#6e6e73]">
           Check-in
           <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)}
@@ -402,11 +436,11 @@ function LiveHotelPanel({
                     )}
                     <span className="text-right">
                       <span className="block text-base font-bold">
-                        {o.currency === 'EUR' ? '€' : '$'}{o.perPersonPerNight.toLocaleString()}
+                        {curSymbol(o.currency)}{o.perPersonPerNight.toLocaleString()}
                         <span className="text-xs font-medium text-[#a1a1a6]"> pp/night</span>
                       </span>
                       <span className="block text-xs text-[#a1a1a6]">
-                        stay total {o.currency === 'EUR' ? '€' : '$'}{o.totalStay.toLocaleString()}
+                        stay total {curSymbol(o.currency)}{o.totalStay.toLocaleString()}
                       </span>
                     </span>
                   </span>
@@ -426,6 +460,11 @@ function LiveHotelPanel({
 /* ---------- main component ---------- */
 
 export default function TripBuilder() {
+  const [resortId, setResortId] = useState(DEFAULT_RESORT_ID);
+  const resort = getResort(resortId);
+  const components = resort.components;
+  const logistics = resort.logistics;
+
   const [travelers, setTravelers] = useState<Traveler[]>([
     { id: 't1', name: 'Traveler 1' },
     { id: 't2', name: 'Traveler 2' },
@@ -454,7 +493,8 @@ export default function TripBuilder() {
 
   const [nights, setNights] = useState(7);
   const [skiDays, setSkiDays] = useState(6);
-  const [fx, setFx] = useState(1.1); // EUR → USD
+  const [fxRates, setFxRates] = useState<FxRates>(DEFAULT_FX);
+  const fxOf = (c: Currency) => fxRates[c] ?? 1;
   const [buffer, setBuffer] = useState(1.0);
   const [profitPct, setProfitPct] = useState(25);
   const [clientName, setClientName] = useState('');
@@ -472,12 +512,13 @@ export default function TripBuilder() {
   interface OfferSnapshot {
     v: 1;
     savedAt: string;
+    resortId?: string;
     offerTitle: string;
     clientName: string;
     travelers: Traveler[];
     nights: number;
     skiDays: number;
-    fx: number;
+    fxRates?: FxRates;
     buffer: number;
     profitPct: number;
     config: Record<string, ComponentConfig>;
@@ -500,12 +541,13 @@ export default function TripBuilder() {
   const snapshot = (): OfferSnapshot => ({
     v: 1,
     savedAt: new Date().toISOString(),
+    resortId,
     offerTitle,
     clientName,
     travelers,
     nights,
     skiDays,
-    fx,
+    fxRates,
     buffer,
     profitPct,
     config,
@@ -514,6 +556,10 @@ export default function TripBuilder() {
   });
 
   const applySnapshot = (s: OfferSnapshot) => {
+    // Restore the resort first, then overlay the saved config (skip the
+    // changeResort reset so the snapshot's own picks survive).
+    const restoredId = s.resortId ?? DEFAULT_RESORT_ID;
+    setResortId(restoredId);
     setOfferTitle(s.offerTitle);
     setClientName(s.clientName);
     setTravelers(s.travelers);
@@ -522,19 +568,17 @@ export default function TripBuilder() {
     travelerIdRef.current = maxId + 1;
     setNights(s.nights);
     setSkiDays(s.skiDays);
-    setFx(s.fx);
+    if (s.fxRates) setFxRates(s.fxRates);
     setBuffer(s.buffer);
     setProfitPct(s.profitPct);
     if (s.tripStart) setTripStart(s.tripStart);
     setPersonalNote(s.personalNote ?? '');
-    // Merge over defaults so snapshots survive future catalog additions.
-    setConfig((prev) => {
-      const next = { ...prev };
-      for (const [k, v] of Object.entries(s.config)) {
-        if (next[k]) next[k] = { ...next[k], ...v };
-      }
-      return next;
-    });
+    // Rebuild from the restored resort's defaults, then overlay saved picks.
+    const base = buildDefaultConfig(getResort(restoredId).components);
+    for (const [k, v] of Object.entries(s.config)) {
+      if (base[k]) base[k] = { ...base[k], ...v };
+    }
+    setConfig(base);
   };
 
   useEffect(() => {
@@ -597,21 +641,19 @@ export default function TripBuilder() {
   };
 
   const [config, setConfig] = useState<Record<string, ComponentConfig>>(() =>
-    Object.fromEntries(
-      components.map((c) => [
-        c.id,
-        {
-          enabled: c.defaultEnabled,
-          optionId: c.defaultOptionId,
-          customLabel: '',
-          customPrice: '',
-          customBasis: 'per_person' as const,
-          split: false,
-          assignments: {} as Record<string, Assignment>,
-        },
-      ])
-    )
+    buildDefaultConfig(getResort(DEFAULT_RESORT_ID).components)
   );
+
+  // Switch resorts: reset the catalog config, offer title, departure to the
+  // resort's first season week, and clear pulled galleries.
+  const changeResort = (id: string) => {
+    const r = getResort(id);
+    setResortId(id);
+    setConfig(buildDefaultConfig(r.components));
+    setOfferTitle(`${r.name} Ski Week — ${r.area}`);
+    setTripStart(r.weeks[0]?.start ?? tripStart);
+    setGalleries({});
+  };
 
   const patch = (id: string, p: Partial<ComponentConfig>) =>
     setConfig((prev) => ({ ...prev, [id]: { ...prev[id], ...p } }));
@@ -691,9 +733,9 @@ export default function TripBuilder() {
         const option = component.options.find((o) => o.id === key);
         if (!option) continue;
         const { qty, detail } = optionQuantity(option, k, nights, skiDays);
-        const gross = option.price * qty * (option.currency === 'EUR' ? fx : 1);
+        const gross = option.price * qty * (fxOf(option.currency));
         const vat = gross - gross / (1 + option.vatRate);
-        const unitUSD = option.price * (option.currency === 'EUR' ? fx : 1);
+        const unitUSD = option.price * (fxOf(option.currency));
         // Per-person units attribute exactly; pooled units (rooms, vans,
         // apartments, per-group) split evenly among the sharing travelers.
         const perMember =
@@ -712,7 +754,7 @@ export default function TripBuilder() {
       }
     }
     return out;
-  }, [config, travelers, nights, skiDays, fx]);
+  }, [config, travelers, nights, skiDays, fxRates]);
 
   const anySplit = components.some((c) => config[c.id]?.enabled && config[c.id]?.split);
 
@@ -752,7 +794,7 @@ export default function TripBuilder() {
       }
 
       if (cfg.optionId === LIVE && cfg.live) {
-        const usd = cfg.live.price * (cfg.live.currency === 'EUR' ? fx : 1);
+        const usd = cfg.live.price * (fxOf(cfg.live.currency));
         const total =
           cfg.live.unit === 'per_person' ? usd * people : usd * people * nights;
         out.push({
@@ -768,12 +810,12 @@ export default function TripBuilder() {
       const option = component.options.find((o) => o.id === cfg.optionId);
       if (!option) continue;
       const { qty, detail } = optionQuantity(option, people, nights, skiDays);
-      const gross = option.price * qty * (option.currency === 'EUR' ? fx : 1);
+      const gross = option.price * qty * (fxOf(option.currency));
       const vat = gross - gross / (1 + option.vatRate);
       out.push({ component, label: option.name, detail, totalUSD: gross, vatUSD: vat, option });
     }
     return out;
-  }, [config, people, nights, skiDays, fx, splitGroups]);
+  }, [config, people, nights, skiDays, fxRates, splitGroups]);
 
   const realTotal = lines.reduce((s, l) => s + l.totalUSD, 0);
 
@@ -797,17 +839,6 @@ export default function TripBuilder() {
       return { traveler: t, total, picks };
     });
   }, [lines, splitGroups, travelers, people, config]);
-
-  // travelerId → (componentId → shortLabel), for the print appendix.
-  const assignmentTable = useMemo(() => {
-    const map: Record<string, Record<string, string>> = {};
-    for (const g of splitGroups) {
-      for (const t of g.members) {
-        (map[t.id] ??= {})[g.component.id] = g.shortLabel;
-      }
-    }
-    return map;
-  }, [splitGroups]);
 
   const splitComponents = components.filter(
     (c) => config[c.id]?.enabled && config[c.id]?.split
@@ -852,38 +883,46 @@ export default function TripBuilder() {
 
   const warnings = useMemo(() => {
     const out: string[] = [];
-    const allInStay =
-      !config.hotel?.split && ['hotel-ucpa', 'hotel-clubmed'].includes(config.hotel?.optionId ?? '');
-    if (allInStay && config.skipass?.enabled) {
-      out.push('The selected stay already includes the lift pass — disable Ski pass to avoid double-counting.');
+    // All-inclusive stays: read the selected hotel's `allInclusive` bundle and
+    // warn about any enabled component it already covers.
+    const hotelCfg = config.hotel;
+    if (hotelCfg?.enabled && !hotelCfg.split) {
+      const hotelOpt = components
+        .find((c) => c.id === 'hotel')
+        ?.options.find((o) => o.id === hotelCfg.optionId);
+      const bundled = hotelOpt?.allInclusive ?? [];
+      const labels: Record<string, string> = {
+        skipass: 'the lift pass', rental: 'equipment rental', skischool: 'ski lessons',
+      };
+      for (const b of bundled) {
+        if (config[b]?.enabled) {
+          out.push(`${hotelOpt?.name} already includes ${labels[b]} — disable that component to avoid double-counting.`);
+        }
+      }
     }
-    if (config.hotel?.optionId === 'hotel-ucpa' && !config.hotel?.split && config.rental?.enabled) {
-      out.push('UCPA includes equipment — disable Rental to avoid double-counting.');
-    }
-    if (config.hotel?.optionId === 'hotel-clubmed' && !config.hotel?.split && config.skischool?.enabled) {
-      out.push('Club Med includes group lessons — Ski school may be double-counted.');
-    }
-    const day = new Date(`${tripStart}T00:00:00`).getDay();
-    if (day !== 6) {
-      out.push(`Trip start ${tripStart} is not a Saturday — Val Thorens hotels and Ben's Bus run on Saturday changeovers.`);
+    if (resort.saturdayChangeover) {
+      const day = new Date(`${tripStart}T00:00:00`).getDay();
+      if (day !== 6) {
+        out.push(`Trip start ${tripStart} is not a Saturday — ${resort.name} runs on Saturday changeovers.`);
+      }
     }
     if (people >= 10) {
-      out.push("Group of 10+: request group rates (Ben's Bus from £80 return; SETAM group pass manifest).");
+      out.push('Group of 10+: request negotiated group rates for the pass and transfers.');
     }
     if (profitPct < 15) {
       out.push(`Profit is set to ${profitPct}% — below the 15% floor for a sustainable offer.`);
     }
-    const wk = weekFor(tripStart);
+    const wk = weekFor(resort.weeks, tripStart);
     if (wk && (wk.band === 'peak' || wk.band === 'high')) {
       out.push(`${BAND_LABEL[wk.band]} week (${wk.flags.join(', ') || 'holiday period'}) — supplier baselines run well above the catalog reference prices; quote up or raise the buffer.`);
     }
     return out;
-  }, [config, tripStart, people, profitPct]);
+  }, [config, components, resort, tripStart, people, profitPct]);
 
   /* ---------- print data assembly (contract for PrintOffer sections) ---------- */
 
   const printData: OfferPrintData = useMemo(() => {
-    const wk = weekFor(tripStart);
+    const wk = weekFor(resort.weeks, tripStart);
     const groupsFor = (componentId: string): PrintServiceGroup[] => {
       const cfg = config[componentId];
       const component = components.find((c) => c.id === componentId);
@@ -942,6 +981,9 @@ export default function TripBuilder() {
         month: 'short', day: 'numeric', year: 'numeric',
       }),
       todayStr: today,
+      resortName: resort.name,
+      resortArea: resort.area,
+      resortCountry: resort.country,
       offerTitle,
       clientName,
       personalNote,
@@ -992,7 +1034,7 @@ export default function TripBuilder() {
       },
     };
   }, [
-    tripStart, today, offerTitle, clientName, personalNote, nights, skiDays, people,
+    resort, components, tripStart, today, offerTitle, clientName, personalNote, nights, skiDays, people,
     travelers, lines, splitGroups, splitComponents, perTraveler, paySchedule,
     perPersonFinal, offeredTotal, config, realTotal, vatTotal, buffer, bufferedTotal,
     profitPct, finalTotal, profitAbs, marginOnOffer,
@@ -1112,12 +1154,41 @@ export default function TripBuilder() {
               client-facing offer as a PDF. This page is unlisted and not indexed.
             </p>
 
+            {/* Resort picker */}
+            <div className="neo-card-sm mt-8 flex flex-col gap-3 p-6 sm:flex-row sm:items-end sm:justify-between">
+              <label className="flex flex-1 flex-col gap-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wide text-[#6e6e73]">Resort</span>
+                <select
+                  value={resortId}
+                  onChange={(e) => changeResort(e.target.value)}
+                  className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-medium text-[#1d1d1f] focus:border-sky-400 focus:outline-none"
+                >
+                  {resortSummaries.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.flag} {r.name} — {r.area}, {r.country}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="max-w-md text-xs leading-relaxed text-[#6e6e73]">{resort.blurb}</p>
+            </div>
+
             {/* Trip parameters */}
-            <div className="neo-card-sm mt-8 grid grid-cols-2 gap-4 p-6 md:grid-cols-4">
+            <div className="neo-card-sm mt-4 grid grid-cols-2 gap-4 p-6 md:grid-cols-4">
               <NumberField label="Travelers" value={people} onChange={setPeopleCount} min={1} />
               <NumberField label="Hotel nights" value={nights} onChange={(v) => setNights(Math.max(1, v))} min={1} />
               <NumberField label="Ski days" value={skiDays} onChange={(v) => setSkiDays(Math.max(1, v))} min={1} />
-              <NumberField label="EUR → USD rate" value={fx} onChange={setFx} min={0.5} step={0.01} />
+              {resort.currency === 'USD' ? (
+                <NumberField label="Buffer (all USD)" value={buffer} onChange={setBuffer} min={1} step={0.05} />
+              ) : (
+                <NumberField
+                  label={`${resort.currency} → USD rate`}
+                  value={fxRates[resort.currency]}
+                  onChange={(v) => setFxRates((prev) => ({ ...prev, [resort.currency]: v }))}
+                  min={0.001}
+                  step={0.01}
+                />
+              )}
             </div>
 
             {/* Traveler roster */}
@@ -1159,7 +1230,7 @@ export default function TripBuilder() {
             </details>
 
             {/* When to go — researched season bands; picking a week sets departure */}
-            <WhenToGo selected={tripStart} onSelect={setTripStart} />
+            <WhenToGo weeks={resort.weeks} selected={tripStart} onSelect={setTripStart} />
 
             {/* Components */}
             {components.map((component) => {
@@ -1211,6 +1282,7 @@ export default function TripBuilder() {
                   {component.id === 'hotel' && cfg.enabled && showMap && !cfg.split && (
                     <div className="mt-4">
                       <HotelMap
+                        center={[resort.lat, resort.lon]}
                         hotels={component.options
                           .filter((o) => o.lat != null && o.lon != null)
                           .map((o) => ({
@@ -1218,7 +1290,7 @@ export default function TripBuilder() {
                             name: o.name.replace(/ ★+S?$/u, '').slice(0, 26),
                             lat: o.lat!,
                             lon: o.lon!,
-                            priceLabel: `${o.currency === 'EUR' ? '€' : '$'}${o.price.toLocaleString()}`,
+                            priceLabel: `${curSymbol(o.currency)}${o.price.toLocaleString()}`,
                             selected: cfg.optionId === o.id,
                           }))}
                         onSelectHotel={(id) => patch('hotel', { optionId: id })}
@@ -1243,7 +1315,7 @@ export default function TripBuilder() {
                       const selected = cfg.optionId === option.id;
                       const { qty, detail } = optionQuantity(option, people, nights, skiDays);
                       const partyTotalUSD =
-                        option.price * qty * (option.currency === 'EUR' ? fx : 1);
+                        option.price * qty * (fxOf(option.currency));
                       return (
                         <div
                           key={option.id}
@@ -1359,7 +1431,7 @@ export default function TripBuilder() {
                           <div className="flex shrink-0 flex-row items-end justify-between gap-1 border-t border-black/5 pt-3 sm:w-44 sm:flex-col sm:justify-center sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 sm:text-right">
                             <div>
                               <p className="text-lg font-bold tracking-tight">
-                                {option.currency === 'EUR' ? '€' : '$'}
+                                {curSymbol(option.currency)}
                                 {option.price.toLocaleString()}
                               </p>
                               <p className="text-[11px] font-medium text-[#a1a1a6]">
@@ -1474,7 +1546,7 @@ export default function TripBuilder() {
                               >
                                 {component.options.map((o) => (
                                   <option key={o.id} value={o.id}>
-                                    {o.name} — {o.currency === 'EUR' ? '€' : '$'}
+                                    {o.name} — {curSymbol(o.currency)}
                                     {o.price.toLocaleString()} {UNIT_LABEL[o.unit]}
                                   </option>
                                 ))}
@@ -1503,6 +1575,8 @@ export default function TripBuilder() {
                   {component.id === 'flights' && cfg.enabled && !cfg.split && (
                     <LiveFlightPanel
                       people={people}
+                      defaultOrigin={resort.defaultOrigin}
+                      destination={resort.gatewayAirports[0]}
                       selectedId={cfg.optionId === LIVE ? cfg.liveId ?? null : null}
                       onSelect={(o, source) =>
                         patch(component.id, {
@@ -1524,6 +1598,9 @@ export default function TripBuilder() {
                   {component.id === 'hotel' && cfg.enabled && !cfg.split && (
                     <LiveHotelPanel
                       people={people}
+                      resortName={resort.name}
+                      lat={resort.lat}
+                      lon={resort.lon}
                       selectedId={cfg.optionId === LIVE ? cfg.liveId ?? null : null}
                       onSelect={(o, source) =>
                         patch(component.id, {
@@ -1746,7 +1823,14 @@ export default function TripBuilder() {
               </p>
             </div>
 
-            <SnowPanel />
+            <SnowPanel
+              name={resort.name}
+              lat={resort.lat}
+              lon={resort.lon}
+              elevationM={resort.elevationM}
+              snowByMonth={resort.snowByMonth}
+              snowFacts={resort.snowFacts}
+            />
           </aside>
         </div>
       </div>

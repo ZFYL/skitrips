@@ -37,7 +37,7 @@ export default function PrintOffer({
           month: 'long', day: 'numeric', year: 'numeric',
         })}{' '}
         · {d.people} traveler{d.people > 1 ? 's' : ''} · {d.nights} nights · {d.skiDays} ski days ·
-        Val Thorens, Les 3 Vallées, France
+        {' '}{d.resortName}, {d.resortArea}, {d.resortCountry}
         {d.seasonNote && <span className="block text-xs text-[#a1a1a6]">{d.seasonNote}</span>}
       </p>
 

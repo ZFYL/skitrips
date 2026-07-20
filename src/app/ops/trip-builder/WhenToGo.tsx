@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { seasonWeeks, BAND_LABEL, type Band } from '@/lib/seasonData';
+import { BAND_LABEL, type Band, type SeasonWeek } from '@/lib/seasonData';
 
 const BAND_STYLE: Record<Band, string> = {
   low: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200',
@@ -19,14 +19,15 @@ const BAND_DOT: Record<Band, string> = {
 };
 
 interface WhenToGoProps {
+  weeks: SeasonWeek[];
   selected: string; // YYYY-MM-DD Saturday
   onSelect: (weekStart: string) => void;
 }
 
 // Season-price/crowd strip — every Saturday-changeover week of 2026/27 with
 // its researched band (school-holiday calendars + operator value guidance).
-export default function WhenToGo({ selected, onSelect }: WhenToGoProps) {
-  const selectedWeek = seasonWeeks.find((w) => w.start === selected);
+export default function WhenToGo({ weeks, selected, onSelect }: WhenToGoProps) {
+  const selectedWeek = weeks.find((w) => w.start === selected);
   return (
     <div className="neo-card-sm mt-6 p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -42,7 +43,7 @@ export default function WhenToGo({ selected, onSelect }: WhenToGoProps) {
       </div>
 
       <div className="mt-4 flex gap-1.5 overflow-x-auto pb-2">
-        {seasonWeeks.map((w) => {
+        {weeks.map((w) => {
           const d = new Date(`${w.start}T00:00:00`);
           const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           const isSel = w.start === selected;

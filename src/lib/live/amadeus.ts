@@ -142,10 +142,6 @@ export async function searchFlights(opts: {
 
 /* ---- Hotels ---- */
 
-// Val Thorens village center.
-const VT_LAT = 45.2979;
-const VT_LON = 6.58;
-
 interface AmadeusHotelListItem {
   hotelId: string;
   name?: string;
@@ -166,11 +162,13 @@ export async function searchHotels(opts: {
   checkIn: string;
   checkOut: string;
   adults: number;
+  lat: number;
+  lon: number;
 }): Promise<LiveHotelOffer[]> {
   const list = (await amadeusGet('/v1/reference-data/locations/hotels/by-geocode', {
-    latitude: String(VT_LAT),
-    longitude: String(VT_LON),
-    radius: '5',
+    latitude: String(opts.lat),
+    longitude: String(opts.lon),
+    radius: '6',
     radiusUnit: 'KM',
   })) as { data?: AmadeusHotelListItem[] };
 
@@ -209,7 +207,7 @@ export async function searchHotels(opts: {
         totalStay: Math.round(total),
         currency: (offer.price.currency === 'USD' ? 'USD' : 'EUR') as 'USD' | 'EUR',
         perPersonPerNight: Math.round(total / adults / nights),
-        deepLink: `https://www.google.com/travel/hotels/Val%20Thorens?q=${encodeURIComponent(h.hotel.name ?? 'Val Thorens hotel')}`,
+        deepLink: `https://www.google.com/travel/hotels?q=${encodeURIComponent(h.hotel.name ?? 'ski hotel')}`,
       };
     })
     .sort((a, b) => a.totalStay - b.totalStay)

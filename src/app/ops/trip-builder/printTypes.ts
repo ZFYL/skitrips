@@ -46,6 +46,10 @@ export interface OfferPrintData {
   offerRef: string;
   validUntil: string;
   todayStr: string;
+  resortName: string;   // 'Val Thorens'
+  resortArea: string;   // 'Les 3 Vallées'
+  resortCountry: string; // 'France'
+  skiAreaUrl?: string;  // official ski-area site for itinerary links
   offerTitle: string;
   clientName: string;
   personalNote: string;

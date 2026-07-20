@@ -23,6 +23,7 @@ export interface OsmPick {
 
 interface HotelMapProps {
   hotels: MapHotel[];
+  center: [number, number]; // resort centre
   onSelectHotel: (id: string) => void;
   onPickOsmHotel: (pick: OsmPick) => void;
 }
@@ -58,7 +59,9 @@ const TILE_STYLES: Record<string, { url: string; attribution: string; maxZoom: n
 
 const OVERPASS = 'https://overpass-api.de/api/interpreter';
 
-export default function HotelMap({ hotels, onSelectHotel, onPickOsmHotel }: HotelMapProps) {
+export default function HotelMap({ hotels, center, onSelectHotel, onPickOsmHotel }: HotelMapProps) {
+  const centerRef = useRef(center);
+  centerRef.current = center;
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tileRef = useRef<L.TileLayer | null>(null);
@@ -77,7 +80,7 @@ export default function HotelMap({ hotels, onSelectHotel, onPickOsmHotel }: Hote
   useEffect(() => {
     if (!divRef.current || mapRef.current) return;
     const map = L.map(divRef.current, {
-      center: [45.2975, 6.5795],
+      center: centerRef.current,
       zoom: 15,
       scrollWheelZoom: true,
     });
@@ -163,6 +166,16 @@ export default function HotelMap({ hotels, onSelectHotel, onPickOsmHotel }: Hote
     const t = TILE_STYLES[style];
     tileRef.current = L.tileLayer(t.url, { attribution: t.attribution, maxZoom: t.maxZoom }).addTo(map);
   }, [style]);
+
+  /* recentre when the resort changes; clear the previous area's OSM pins */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.setView(center, 15);
+    osmLayerRef.current?.clearLayers();
+    seenOsmIds.current.clear();
+    setOsmCount(0);
+  }, [center]);
 
   /* curated hotel markers (price chips) */
   useEffect(() => {

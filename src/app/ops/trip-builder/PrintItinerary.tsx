@@ -60,11 +60,11 @@ interface DayEntry {
 const FILLER: { title: string; body: string }[] = [
   {
     title: 'High-alpine morning',
-    body: 'Wide cruising reds off the Cime Caron, then a long lunch on a sunny piste-side terrace.',
+    body: 'Wide cruising runs off the top lifts, then a long lunch on a sunny piste-side terrace.',
   },
   {
     title: 'Mountain-hut day',
-    body: 'Ski the Val Thorens bowls and stop for a proper lunch at an altitude hut above the tree line.',
+    body: 'Ski the high bowls and stop for a proper lunch at an altitude hut on the mountain.',
   },
   {
     title: 'Ski & spa',
@@ -119,7 +119,7 @@ export default function PrintItinerary({ data }: { data: OfferPrintData }) {
         )}
         {transferGroups.length > 0 && (
           <li>
-            Transfer up to Val Thorens: <GroupList groups={transferGroups} who={who} />
+            Transfer up to {data.resortName}: <GroupList groups={transferGroups} who={who} />
           </li>
         )}
         {hotel && (
@@ -163,7 +163,7 @@ export default function PrintItinerary({ data }: { data: OfferPrintData }) {
         title: 'First tracks',
         body: (
           <p>
-            An easy warm-up morning in Val Thorens to find your legs on home pistes.
+            An easy warm-up morning in {data.resortName} to find your legs on home pistes.
             {skiSchool && (
               <>
                 {' '}
@@ -185,17 +185,20 @@ export default function PrintItinerary({ data }: { data: OfferPrintData }) {
         skiPass
           ? {
               date,
-              title: 'The 3 Vallées traverse 🏔️',
+              title: `The ${data.resortArea} big day 🏔️`,
               body: (
                 <p>
-                  Cross the valleys to Méribel &amp; Courchevel and back —{' '}
+                  Explore the far reaches of{' '}
                   <a
-                    href="https://www.les3vallees.com/en/"
+                    href={
+                      data.skiAreaUrl ??
+                      `https://www.google.com/search?q=${encodeURIComponent(data.resortArea + ' ski area')}`
+                    }
                     className="underline decoration-black/30 underline-offset-2"
                   >
-                    Les 3 Vallées
+                    {data.resortArea}
                   </a>
-                  . Your 6-day pass covers the full 600 km of linked terrain.
+                  {' '}on the full-area pass — the kind of terrain a single valley can&apos;t offer.
                 </p>
               ),
             }
@@ -230,7 +233,7 @@ export default function PrintItinerary({ data }: { data: OfferPrintData }) {
             and onward journeys from there.
           </>
         ) : (
-          'Own journeys home from Val Thorens.'
+          `Own journeys home from ${data.resortName}.`
         )}
       </p>
     ),

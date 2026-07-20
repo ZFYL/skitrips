@@ -7,12 +7,12 @@ import { pFmt } from './printTypes';
 // and the footer. Print-safe: each box avoids page-break splits; no color relied on.
 
 const ETIAS_URL = 'https://travel-europe.europa.eu/etias_en';
-const ACCESS_URL = 'https://www.valthorens.com/en/access/';
+const ACCESS_URL = 'https://travel-europe.europa.eu/etias_en';
 
 // Optional add-on components, keyed by componentId, with the phrasing used when
 // the component is absent from the offer's included lines.
 const ADD_ONS: { id: string; text: string }[] = [
-  { id: 'skipass', text: 'Lift pass — 6-day Les 3 Vallées pass, available as an add-on' },
+  { id: 'skipass', text: 'Lift pass — 6-day area pass, available as an add-on' },
   { id: 'rental', text: 'Equipment rental — skis, boots & helmet, available as an add-on' },
   { id: 'skischool', text: 'Ski school / lessons — available as an add-on' },
   { id: 'insurance', text: 'Travel insurance — please hold your own, or add a policy through us' },
@@ -55,13 +55,12 @@ export default function PrintExtras({ data }: { data: OfferPrintData }) {
       — check whether it applies to your trip and apply online ahead of travel.
     </>,
     <>
-      <span className="font-medium text-[#1d1d1f]">Saturday-to-Saturday.</span> Val Thorens runs a
+      <span className="font-medium text-[#1d1d1f]">Saturday-to-Saturday.</span> {data.resortName} runs a
       Saturday changeover — arrivals and departures fall on Saturdays, and lifts and roads are
       busiest that day.
     </>,
     <>
-      <span className="font-medium text-[#1d1d1f]">Altitude.</span> The village sits at 2,300 m —
-      Europe&apos;s highest ski resort. Drink plenty of water, go easy on alcohol the first evening,
+      <span className="font-medium text-[#1d1d1f]">Altitude.</span> Mountain resorts sit at altitude — Drink plenty of water, go easy on alcohol the first evening,
       and take your first day gently.
     </>,
     <>

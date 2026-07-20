@@ -10,11 +10,14 @@ export async function GET(req: NextRequest) {
   const checkIn = p.get('checkIn') ?? '';
   const checkOut = p.get('checkOut') ?? '';
   const adults = Math.max(1, parseInt(p.get('adults') ?? '2', 10) || 2);
+  const lat = parseFloat(p.get('lat') ?? '');
+  const lon = parseFloat(p.get('lon') ?? '');
+  const name = p.get('name') ?? 'this resort';
 
   const dateOk = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateOk.test(checkIn) || !dateOk.test(checkOut)) {
+  if (!dateOk.test(checkIn) || !dateOk.test(checkOut) || Number.isNaN(lat) || Number.isNaN(lon)) {
     return NextResponse.json(
-      { error: 'checkIn and checkOut must be YYYY-MM-DD' },
+      { error: 'checkIn/checkOut (YYYY-MM-DD) and lat/lon are required' },
       { status: 400 }
     );
   }
@@ -23,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   if (amadeusConfigured()) {
     try {
-      const offers = await searchHotels({ checkIn, checkOut, adults });
+      const offers = await searchHotels({ checkIn, checkOut, adults, lat, lon });
       const body: LiveResponse<LiveHotelOffer> = {
         source: 'amadeus',
         fetchedAt,
@@ -40,8 +43,8 @@ export async function GET(req: NextRequest) {
         source: 'reference',
         fetchedAt,
         error: e instanceof Error ? e.message : 'Amadeus call failed',
-        note: 'Live call failed — showing researched reference rates (July 2026).',
-        offers: referenceHotels(checkIn, checkOut, adults),
+        note: `Live call failed — use the priced catalog below for ${name}.`,
+        offers: referenceHotels(),
       };
       return NextResponse.json(body);
     }
@@ -51,8 +54,8 @@ export async function GET(req: NextRequest) {
     source: 'reference',
     fetchedAt,
     note:
-      'No Amadeus credentials configured (free at developers.amadeus.com — set AMADEUS_CLIENT_ID / AMADEUS_CLIENT_SECRET). Showing researched reference rates.',
-    offers: referenceHotels(checkIn, checkOut, adults),
+      `No live provider configured (add free Amadeus keys to enable). The priced catalog below is your researched inventory for ${name}.`,
+    offers: referenceHotels(),
   };
   return NextResponse.json(body);
 }

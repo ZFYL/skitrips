@@ -1,15 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { snowByMonth, snowFacts } from '@/lib/seasonData';
+import type { SnowMonth } from '@/lib/resorts/types';
 
-// Live Val Thorens conditions via Open-Meteo (free, keyless, CC-BY-4.0).
-// Elevation pinned to the resort base (2300 m) so temperatures are honest.
-
-const URL =
-  'https://api.open-meteo.com/v1/forecast?latitude=45.298&longitude=6.580' +
-  '&daily=snowfall_sum,temperature_2m_max,temperature_2m_min&forecast_days=7' +
-  '&elevation=2300&timezone=Europe%2FParis';
+// Live resort conditions via Open-Meteo (free, keyless, CC-BY-4.0), pinned to
+// the resort's base elevation so temperatures are honest.
 
 interface Daily {
   time: string[];
@@ -18,26 +13,41 @@ interface Daily {
   temperature_2m_min: number[];
 }
 
-export default function SnowPanel() {
+interface SnowPanelProps {
+  name: string;
+  lat: number;
+  lon: number;
+  elevationM: number;
+  snowByMonth: SnowMonth[];
+  snowFacts: string;
+}
+
+export default function SnowPanel({ name, lat, lon, elevationM, snowByMonth, snowFacts }: SnowPanelProps) {
   const [daily, setDaily] = useState<Daily | null>(null);
   const [err, setErr] = useState(false);
 
   useEffect(() => {
-    fetch(URL)
+    setDaily(null);
+    setErr(false);
+    const url =
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+      `&daily=snowfall_sum,temperature_2m_max,temperature_2m_min&forecast_days=7` +
+      `&elevation=${Math.round(elevationM)}&timezone=auto`;
+    fetch(url)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((j) => setDaily(j.daily as Daily))
       .catch(() => setErr(true));
-  }, []);
+  }, [lat, lon, elevationM]);
+
+  const maxBase = Math.max(1, ...snowByMonth.map((m) => m.base));
 
   return (
     <div className="neo-card-sm mt-6 p-6">
-      <p className="text-sm font-bold">🌨️ Val Thorens — live 7-day outlook</p>
+      <p className="text-sm font-bold">🌨️ {name} — live 7-day outlook</p>
       <p className="mt-0.5 text-[11px] text-[#a1a1a6]">
-        Open-Meteo at 2,300 m resort elevation · refreshed on load
+        Open-Meteo at {Math.round(elevationM)} m resort elevation · refreshed on load
       </p>
-      {err && (
-        <p className="mt-3 text-xs text-[#a1a1a6]">Forecast unavailable right now.</p>
-      )}
+      {err && <p className="mt-3 text-xs text-[#a1a1a6]">Forecast unavailable right now.</p>}
       {daily && (
         <div className="mt-3 grid grid-cols-7 gap-1.5 text-center">
           {daily.time.map((t, i) => {
@@ -59,27 +69,27 @@ export default function SnowPanel() {
           })}
         </div>
       )}
-      {!daily && !err && (
-        <p className="mt-3 text-xs text-[#a1a1a6]">Loading forecast…</p>
-      )}
+      {!daily && !err && <p className="mt-3 text-xs text-[#a1a1a6]">Loading forecast…</p>}
 
-      {/* Historical monthly base depth (OnTheSnow / SNO averages) */}
-      <div className="mt-5 border-t border-black/5 pt-4">
-        <p className="text-xs font-semibold text-[#494949]">Average base depth by month</p>
-        <div className="mt-2 flex items-end gap-2" aria-hidden>
-          {snowByMonth.map((m) => (
-            <div key={m.month} className="flex flex-1 flex-col items-center gap-1">
-              <span className="text-[10px] font-semibold text-sky-700">{m.base}</span>
-              <div
-                className="w-full rounded-t-[4px] bg-gradient-to-t from-sky-400 to-sky-200"
-                style={{ height: `${(m.base / 210) * 56}px` }}
-              />
-              <span className="text-[10px] text-[#a1a1a6]">{m.month}</span>
-            </div>
-          ))}
+      {/* Historical monthly base depth */}
+      {snowByMonth.length > 0 && (
+        <div className="mt-5 border-t border-black/5 pt-4">
+          <p className="text-xs font-semibold text-[#494949]">Average base depth by month</p>
+          <div className="mt-2 flex items-end gap-2" aria-hidden>
+            {snowByMonth.map((m) => (
+              <div key={m.month} className="flex flex-1 flex-col items-center gap-1">
+                <span className="text-[10px] font-semibold text-sky-700">{m.base}</span>
+                <div
+                  className="w-full rounded-t-[4px] bg-gradient-to-t from-sky-400 to-sky-200"
+                  style={{ height: `${(m.base / maxBase) * 56}px` }}
+                />
+                <span className="text-[10px] text-[#a1a1a6]">{m.month}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[10px] leading-relaxed text-[#a1a1a6]">{snowFacts}</p>
         </div>
-        <p className="mt-2 text-[10px] leading-relaxed text-[#a1a1a6]">{snowFacts}</p>
-      </div>
+      )}
     </div>
   );
 }
